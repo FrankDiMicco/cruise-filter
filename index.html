@@ -51,7 +51,7 @@ button, input, select { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--buoy); outline-offset: 2px; }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; display: grid; gap: 16px; }
-header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 10px 20px; }
 h1 {
   font: 800 clamp(30px, 8vw, 48px)/0.92 var(--display);
   letter-spacing: 0.02em; text-transform: uppercase; margin: 0;
@@ -73,7 +73,8 @@ h1 span { color: var(--buoy); }
 .notice b { font-weight: 700; }
 
 .theme { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
-.theme select { width: auto; background: var(--panel); padding: 7px 8px; }
+.theme select { width: auto; background: transparent; border-color: transparent; color: var(--muted); padding: 5px 4px; font-size: 13px; cursor: pointer; }
+.theme select:hover { border-color: var(--line); }
 
 .wrap > * { min-width: 0; }
 .barwrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 8px 0; margin: -8px 0; }
@@ -197,6 +198,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
 <div class="wrap">
   <header class="top">
     <h1>Cruise <span>Filter</span></h1>
+    <div class="theme"><select id="palette" aria-label="Color theme"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
   </header>
 
   <div class="notice" id="notice"></div>
@@ -278,8 +280,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       <div class="results" id="results"></div>
       <div class="footbar">
         <p class="foot" id="foot"></p>
-        <div class="theme"><label for="palette">Colors</label>
-          <select id="palette"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
       </div>
     </main>
 </div>
