@@ -63,7 +63,6 @@ h1 span { color: var(--buoy); }
 }
 .btn.solid { background: var(--ink); color: var(--bg); }
 .btn.quiet { border-color: var(--line); color: var(--muted); font-weight: 500; }
-#file { position: absolute; width: 1px; height: 1px; opacity: 0; }
 
 .notice {
   border-left: 5px solid var(--buoy); background: var(--buoy-soft);
@@ -157,7 +156,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   background: var(--sea-soft); color: var(--sea); font-size: 12.5px; font-weight: 700;
 }
 .pill.best { background: var(--buoy); color: var(--on-buoy); }
-.sampletag { display: inline-block; margin-top: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--buoy); }
 .empty { padding: 28px 16px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; }
 .more { justify-self: center; margin-top: 6px; }
 </style>
@@ -167,9 +165,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   <header class="top">
     <h1>Cruise <span>Filter</span></h1>
     <div class="load">
-      <label class="btn solid" for="file" id="fileLabel">Load sailings file</label>
-      <input type="file" id="file" accept=".json,application/json" multiple>
-      <button class="btn quiet" id="useSample" type="button" hidden>Back to sample data</button>
       <div class="theme"><label for="palette">Colors</label>
         <select id="palette"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
     </div>
@@ -251,54 +246,9 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   function recall(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
 
-  /* ---------- sample data: invented sailings so the filter can be tried ---------- */
-  function sampleSailings() {
-    var seed = 20261109;
-    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
-    var T = [
-      ["Royal Caribbean", "Icon of the Seas", "7 Night Western Caribbean", 7, "Miami, Florida", ["Roatan, Honduras", "Costa Maya, Mexico", "Cozumel, Mexico", "Perfect Day at CocoCay"], 2, 1450],
-      ["Royal Caribbean", "Wonder of the Seas", "7 Night Eastern Caribbean", 7, "Port Canaveral, Florida", ["Philipsburg, St. Maarten", "Charlotte Amalie, St. Thomas", "Perfect Day at CocoCay"], 3, 1050],
-      ["Royal Caribbean", "Utopia of the Seas", "3 Night Bahamas Getaway", 3, "Port Canaveral, Florida", ["Nassau, Bahamas", "Perfect Day at CocoCay"], 0, 520],
-      ["Royal Caribbean", "Odyssey of the Seas", "8 Night Southern Caribbean", 8, "Fort Lauderdale, Florida", ["Oranjestad, Aruba", "Willemstad, Curacao", "Labadee, Haiti"], 4, 980],
-      ["Royal Caribbean", "Ovation of the Seas", "7 Night Alaska Glacier", 7, "Seattle, Washington", ["Juneau, Alaska", "Skagway, Alaska", "Victoria, British Columbia"], 3, 1120],
-      ["Celebrity", "Celebrity Beyond", "7 Night Eastern Caribbean", 7, "Fort Lauderdale, Florida", ["San Juan, Puerto Rico", "Tortola, British Virgin Islands", "Basseterre, St. Kitts"], 3, 1240],
-      ["Celebrity", "Celebrity Ascent", "10 Night Greek Isles", 10, "Rome (Civitavecchia), Italy", ["Naples, Italy", "Santorini, Greece", "Mykonos, Greece", "Athens (Piraeus), Greece", "Kotor, Montenegro"], 3, 2150],
-      ["Celebrity", "Celebrity Edge", "7 Night Alaska Dawes Glacier", 7, "Seattle, Washington", ["Ketchikan, Alaska", "Juneau, Alaska", "Skagway, Alaska", "Victoria, British Columbia"], 2, 1180],
-      ["Norwegian", "Norwegian Aqua", "7 Night Caribbean", 7, "Port Canaveral, Florida", ["Puerto Plata, Dominican Republic", "Charlotte Amalie, St. Thomas", "Tortola, British Virgin Islands", "Great Stirrup Cay"], 2, 1090],
-      ["Norwegian", "Norwegian Viva", "9 Night Mediterranean", 9, "Lisbon, Portugal", ["Cadiz, Spain", "Ibiza, Spain", "Barcelona, Spain", "Cannes, France", "Florence (Livorno), Italy"], 2, 1790],
-      ["Norwegian", "Norwegian Getaway", "4 Night Bahamas", 4, "Miami, Florida", ["Nassau, Bahamas", "Great Stirrup Cay"], 1, 410],
-      ["Norwegian", "Pride of America", "7 Night Hawaii Inter-Island", 7, "Honolulu, Hawaii", ["Kahului, Maui", "Hilo, Hawaii", "Kona, Hawaii", "Nawiliwili, Kauai"], 0, 2090],
-      ["MSC", "MSC World America", "7 Night Western Caribbean", 7, "Miami, Florida", ["Costa Maya, Mexico", "Cozumel, Mexico", "Roatan, Honduras", "Ocean Cay MSC Marine Reserve"], 2, 720],
-      ["MSC", "MSC Seashore", "4 Night Bahamas", 4, "Port Canaveral, Florida", ["Nassau, Bahamas", "Ocean Cay MSC Marine Reserve"], 1, 330],
-      ["MSC", "MSC World Europa", "7 Night Western Mediterranean", 7, "Barcelona, Spain", ["Marseille, France", "Genoa, Italy", "Naples, Italy", "Messina, Italy", "Valletta, Malta"], 1, 890],
-      ["Princess", "Sun Princess", "7 Night Eastern Caribbean", 7, "Fort Lauderdale, Florida", ["Princess Cays, Bahamas", "San Juan, Puerto Rico", "Charlotte Amalie, St. Thomas"], 3, 880],
-      ["Princess", "Discovery Princess", "7 Night Inside Passage", 7, "Vancouver, British Columbia", ["Ketchikan, Alaska", "Juneau, Alaska", "Skagway, Alaska"], 3, 950],
-      ["Princess", "Regal Princess", "12 Night British Isles", 12, "Southampton, England", ["Cork (Cobh), Ireland", "Dublin, Ireland", "Belfast, Northern Ireland", "Glasgow (Greenock), Scotland", "Edinburgh (South Queensferry), Scotland"], 4, 2380]
-    ];
-    var out = [], base = new Date(2026, 11, 5);
-    T.forEach(function (t, i) {
-      var seasonal = /Alaska|Passage|Mediterranean|Greek|British/.test(t[2]);
-      var d = new Date(base.getTime());
-      d.setDate(d.getDate() + (i * 3) % 7 + (seasonal ? 150 : 0));
-      var count = seasonal ? 7 : 12, gap = t[3] <= 4 ? 7 : (t[3] > 7 ? t[3] * 2 : 14);
-      for (var k = 0; k < count; k++) {
-        var start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k * gap);
-        var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + t[3]);
-        var m = start.getMonth();
-        var peak = (m === 11 || m === 2 || m === 5 || m === 6) ? 1.28 : 1;
-        var price = rnd() < 0.05 ? null : Math.round(t[7] * peak * (0.86 + rnd() * 0.32) / 5) * 5 - 1;
-        out.push({
-          line: t[0], ship: t[1], itinerary: t[2], nights: t[3], departure_port: t[4],
-          start_date: isoOf(start), end_date: isoOf(end), ports: t[5], port_count: t[5].length,
-          sea_days: t[6], price_from: price, price_per_night: price ? Math.round(price / t[3] * 100) / 100 : null
-        });
-      }
-    });
-    return out;
-  }
 
   /* ---------- state ---------- */
-  var data = [], isSample = true, scrapedAt = "", shown = PAGE, lineStamps = null;
+  var data = [], status = "loading", scrapedAt = "", shown = PAGE, lineStamps = null;
   function staleNote() {
     if (!lineStamps || !scrapedAt) return "";
     var day = scrapedAt.slice(0, 10), old = Object.keys(lineStamps).filter(function (l) { return lineStamps[l] && lineStamps[l].slice(0, 10) < day; });
@@ -340,8 +290,8 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     });
   }
 
-  function setData(rows, sample, stamp) {
-    data = normalize(rows); isSample = sample; scrapedAt = stamp || "";
+  function setData(rows, stamp) {
+    data = normalize(rows); status = "ready"; scrapedAt = stamp || "";
     F.lines = F.lines.filter(function (v) { return has("line", v); });
     F.regions = F.regions.filter(function (v) { return has("region", v); });
     F.ports = F.ports.filter(function (v) { return has("port", v); });
@@ -440,12 +390,10 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     var lowP = priced.reduce(function (m, r) { return Math.min(m, r.price); }, Infinity);
     var lowN = priced.reduce(function (m, r) { return r.ppn != null ? Math.min(m, r.ppn) : m; }, Infinity);
 
-    $("notice").className = "notice" + (isSample ? "" : " real");
-    $("notice").innerHTML = isSample
-      ? "<b>Sample data.</b> These sailings and prices are invented so you can try the filter. Load a <code>sailings.json</code> file to see real ones."
+    $("notice").className = "notice" + (status === "ready" ? " real" : "");
+    $("notice").innerHTML = status === "loading" ? "Loading sailings\u2026"
+      : status === "error" ? "<b>Couldn't load the sailings data.</b> Check your connection and reload the page."
       : "<b>" + data.length.toLocaleString("en-US") + " sailings loaded</b>" + (scrapedAt ? ", pulled " + esc(scrapedAt.replace("T", " at ")) : "") + ". Prices are per person for two sharing a cabin, including taxes, fees and port expenses, as of that pull. Daily gratuities are extra on every line." + staleNote();
-    $("useSample").hidden = isSample;
-    $("fileLabel").textContent = isSample ? "Load sailings file" : "Load another file";
 
     var wf = parseDay(F.from), wt = parseDay(F.to), note = "Shows only cruises that leave and return inside these dates.";
     if (wf && wt) {
@@ -462,7 +410,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
         '<div class="stat"><b>' + money(lowN) + "</b><span>lowest per night</span></div>" : "");
 
     if (!list.length) {
-      $("results").innerHTML = '<div class="empty">No sailings match these filters. Loosen one or clear them all.</div>';
+      $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Loosen one or clear them all.</div>' : "";
       return;
     }
     var html = list.slice(0, shown).map(function (r) {
@@ -470,7 +418,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       var fare = r.price != null
         ? '<div class="pp">' + money(r.price) + '</div><span class="unit">' + (F.cabin ? "per person, " + CABIN[F.cabin] : "per person from") + "</span>" +
           (r.ppn != null ? '<span class="pill' + (best ? " best" : "") + '">' + money(r.ppn) + " / night</span>" : "") +
-          (isSample ? '<br><span class="sampletag">SAMPLE</span>' : "")
+""
         : '<span class="unit">' + (F.cabin ? "No " + CABIN[F.cabin] + " price" : "No price listed") + "</span>";
       var sea = r.sea == null ? "" : " · <strong>" + r.sea + "</strong> sea day" + (r.sea === 1 ? "" : "s");
       var open = r.url ? '<a class="row link" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc("Open " + r.ship + ", " + r.start + ", on the " + r.line + " site") + '">' : '<article class="row">';
@@ -488,37 +436,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     $("results").innerHTML = html;
   }
 
-  /* ---------- file loading ---------- */
-  function readFiles(files) {
-    var all = [], stamp = "", left = files.length, bad = [];
-    if (!left) return;
-    Array.prototype.forEach.call(files, function (f) {
-      var reader = new FileReader();
-      reader.onload = function () {
-        try {
-          var j = JSON.parse(reader.result);
-          var rows = Array.isArray(j) ? j : j.sailings;
-          if (!Array.isArray(rows)) throw new Error("no sailings");
-          all = all.concat(rows);
-          if (j.scraped_at && String(j.scraped_at) > stamp) stamp = String(j.scraped_at);
-        } catch (e) { bad.push(f.name); }
-        done();
-      };
-      reader.onerror = function () { bad.push(f.name); done(); };
-      reader.readAsText(f);
-    });
-    function done() {
-      if (--left) return;
-      if (all.length) {
-        setData(all, false, stamp);
-        store("cruiseFilter.data", { stamp: stamp, rows: all });
-      }
-      if (bad.length) {
-        $("notice").className = "notice";
-        $("notice").innerHTML = "<b>Could not read " + esc(bad.join(", ")) + ".</b> Pick the <code>sailings.json</code> file the scraper saved, not the CSV.";
-      }
-    }
-  }
 
   /* ---------- color palettes ---------- */
   var KEYS = ["bg", "panel", "ink", "muted", "line", "sea", "sea-soft", "buoy", "buoy-soft", "on-buoy"];
@@ -579,11 +496,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   $("fCabin").addEventListener("change", function () { F.cabin = $("fCabin").value; applyCabin(); changed(); });
   $("reset").addEventListener("click", function () { var s = F.sort; F = blank(); F.sort = s; applyCabin(); buildOptions(); syncInputs(); changed(); });
   $("results").addEventListener("click", function (e) { if (e.target.id === "more") { shown += PAGE; render(); } });
-  $("file").addEventListener("change", function (e) { readFiles(e.target.files); e.target.value = ""; });
-  $("useSample").addEventListener("click", function () {
-    try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}
-    setData(sampleSailings(), true, "");
-  });
 
   var savedF = recall("cruiseFilter.filters");
   if (savedF && typeof savedF === "object") {
@@ -599,17 +511,14 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     store("cruiseFilter.panelOpen", $("filterPanel").open);
     $("layout").classList.toggle("collapsed", !$("filterPanel").open);
   });
-  var saved = recall("cruiseFilter.data");
-  var savedOk = saved && Array.isArray(saved.rows) && saved.rows.length;
-  if (savedOk) setData(saved.rows, false, saved.stamp); else setData(sampleSailings(), true, "");
-  fetch("sailings.json").then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) {
-    var rows = Array.isArray(j) ? j : j.sailings, stamp = String(j.scraped_at || "");
-    if (!Array.isArray(rows) || !rows.length) return;
-    if (savedOk && String(saved.stamp || "") > stamp) return;
-    try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}
+  try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}  // leftover from the old file loader
+  buildOptions(); syncInputs(); render();
+  fetch("sailings.json", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) {
+    var rows = Array.isArray(j) ? j : j.sailings;
+    if (!Array.isArray(rows) || !rows.length) throw 0;
     lineStamps = j.lines && typeof j.lines === "object" ? j.lines : null;
-    setData(rows, false, stamp);
-  }).catch(function () {});
+    setData(rows, String(j.scraped_at || ""));
+  }).catch(function () { status = "error"; render(); });
 })();
 </script>
 </body>
