@@ -563,6 +563,16 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     return (a.ppn == null ? big : a.ppn) - (b.ppn == null ? big : b.ppn) || a.start.localeCompare(b.start);
   }
 
+  /* Carry the chosen cabin type into the cruise line's page, on the lines whose links accept one. */
+  var CABIN_LINK = {
+    "Norwegian": ["&stateroomTypeCode=", { interior: "INSIDE", outside: "OCEANVIEW", balcony: "BALCONY", suite: "SUITE" }],
+    "Princess": ["&meta=", { interior: "I", outside: "O", balcony: "B", suite: "S" }]
+  };
+  function cabinParam(line) {
+    var c = CABIN_LINK[line];
+    return F.cabin && c ? c[0] + c[1][F.cabin] : "";
+  }
+
   /* ---------- render ---------- */
   function dateRange(r) {
     var s = parseDay(r.start), e = parseDay(r.end);
@@ -603,7 +613,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
           (r.ppn != null ? '<span class="pill' + (best ? " best" : "") + '">' + money(r.ppn) + " / night</span>" : "")
         : '<span class="unit">' + (F.cabin ? "No " + CABIN[F.cabin] + " price" : "No price listed") + "</span>";
       var sea = r.sea == null ? "" : " · <strong>" + r.sea + "</strong> sea day" + (r.sea === 1 ? "" : "s");
-      var open = r.url ? '<a class="row link" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc("Open " + r.ship + ", " + r.start + ", on the " + r.line + " site") + '">' : '<article class="row">';
+      var open = r.url ? '<a class="row link" href="' + esc(r.url + cabinParam(r.line)) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc("Open " + r.ship + ", " + r.start + ", on the " + r.line + " site") + '">' : '<article class="row">';
       return open + '<div>' +
         '<div class="linetag">' + esc(r.line) + (r.region !== "Other" ? ' <span class="regtag">' + esc(r.region) + "</span>" : "") + "</div>" +
         '<div class="ship">' + esc(r.ship) + "</div>" +
