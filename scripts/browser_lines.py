@@ -69,9 +69,12 @@ async ({url, headers, body}) => {
   }
   const ids = [...new Set(sailings.map(s => s.id))], price = {}, errors = [], currency = {};
   const base = JSON.parse(body);
-  for (let i = 0; i < ids.length; i += 100) {
+  // The page's own request uses leadInBy "itins", which prices only one sailing per itinerary.
+  // "voyages" returns a price for every sailing in a single response.
+  base.leadInBy = 'voyages';
+  for (let i = 0; i < 1; i++) {
     try {
-      base.filters.cruises = ids.slice(i, i + 100);
+      base.filters.cruises = [];
       const r = await fetch(url, {method:'POST', headers, body: JSON.stringify(base)});
       if (!r.ok) throw new Error('HTTP ' + r.status);
       for (const p of (await r.json()).products || []) for (const c of p.cruises || []) {
@@ -167,5 +170,6 @@ def pull_princess(row):
                 ports.append(n)
         url = "https://www.princess.com/cruise-search/details/?voyageCode=" + urllib.parse.quote(s["id"])
         rows.append(row("Princess", s["ship"], f"{s['nights']}-Day {s['name']}", s["nights"], s["depart"], iso(s["start"]), iso(s["end"]), ports, None,
-                        {"interior": cab.get("I"), "outside": cab.get("O"), "balcony": cab.get("B"), "suite": cab.get("S") or cab.get("M")}, url))
+                        {"interior": cab.get("I"), "outside": cab.get("O"), "balcony": min([x for x in (cab.get("B"), cab.get("D")) if x], default=None),
+                         "suite": cab.get("S") or cab.get("M")}, url))
     return rows
