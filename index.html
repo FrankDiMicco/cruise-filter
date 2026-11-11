@@ -254,7 +254,9 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
             <div class="chips"><button type="button" class="chip" id="flPorts" aria-pressed="false">Florida ports</button></div>
             <input type="search" id="fPortQ" placeholder="Search ports" aria-label="Search departure ports" autocomplete="off">
             <div class="opts scroll" id="lPort"></div></div>
-          <div class="field"><label for="fShip">Ship</label><select id="fShip"></select></div>
+          <div class="field"><span class="lab">Ship</span>
+            <input type="search" id="fShipQ" placeholder="Search ships" aria-label="Search ships" autocomplete="off">
+            <div class="opts scroll" id="lShip"></div></div>
           <div class="field"><label for="fVisit">Must visit</label>
             <input type="text" id="fVisit" placeholder="e.g. Cozumel, St. Thomas" autocomplete="off">
             <span class="hint">Separate ports with commas. All must be on the itinerary.</span></div>
@@ -321,7 +323,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   }
   var F = blank();
   function blank() {
-    return { regions: [], lines: [], from: "", to: "", nmin: "", nmax: "", dow: [], ports: [], ship: "", visit: "", price: "", ppn: "", sea: "", priced: false, sort: "ppn", cabin: "" };
+    return { regions: [], lines: [], from: "", to: "", nmin: "", nmax: "", dow: [], ports: [], ships: [], visit: "", price: "", ppn: "", sea: "", priced: false, sort: "ppn", cabin: "" };
   }
 
   function normalize(rows) {
@@ -359,7 +361,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     F.lines = F.lines.filter(function (v) { return has("line", v); });
     F.regions = F.regions.filter(function (v) { return has("region", v); });
     F.ports = F.ports.filter(function (v) { return has("port", v); });
-    if (F.ship && !has("ship", F.ship)) F.ship = "";
+    F.ships = F.ships.filter(function (v) { return has("ship", v); });
     applyCabin(); buildOptions(); syncInputs(); render();
   }
   function has(key, v) { return data.some(function (r) { return r[key] === v; }); }
@@ -380,7 +382,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     nights: { title: "Nights", keys: ["nmin", "nmax"] },
     cabin: { title: "Cabin type", keys: ["cabin"] },
     price: { title: "Max price per person", keys: ["price", "ppn", "priced"] },
-    more: { title: "More filters", keys: ["lines", "ports", "ship", "visit", "sea", "dow"] }
+    more: { title: "More filters", keys: ["lines", "ports", "ships", "visit", "sea", "dow"] }
   };
   var openPane = null, opener = null, activeFns = [];
 
@@ -390,17 +392,13 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     }).join("");
   }
   function buildOptions() {
-    order = { region: counts("region"), line: counts("line"), port: counts("port") };
+    order = { region: counts("region"), line: counts("line"), port: counts("port"), ship: counts("ship").sort() };
     chipSet($("fDow"), [0, 1, 2, 3, 4, 5, 6], DOW, F.dow);
     $("nightPresets").innerHTML = NIGHTS.map(function (n, i) { return '<button type="button" class="chip" data-i="' + i + '">' + n[2] + "</button>"; }).join("");
-    var ships = counts("ship").sort();
-    $("fShip").innerHTML = '<option value="">Any ship</option>' + ships.map(function (s) {
-      return '<option value="' + esc(s) + '">' + esc(s) + "</option>";
-    }).join("");
   }
   function syncInputs() {
     $("fFrom").value = F.from; $("fTo").value = F.to; $("fNmin").value = F.nmin; $("fNmax").value = F.nmax;
-    $("fShip").value = F.ship; $("fVisit").value = F.visit; $("fPrice").value = F.price; $("fPpn").value = F.ppn;
+    $("fVisit").value = F.visit; $("fPrice").value = F.price; $("fPpn").value = F.ppn;
     $("fSea").value = F.sea; $("fPriced").checked = F.priced; $("sortBy").value = F.sort;
     chipSet($("fDow"), [0, 1, 2, 3, 4, 5, 6], DOW, F.dow);
   }
@@ -438,6 +436,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     if (openPane === "more") {
       optList($("lLine"), "lines", "line");
       optList($("lPort"), "ports", "port", $("fPortQ").value);
+      optList($("lShip"), "ships", "ship", $("fShipQ").value);
       var fl = FLORIDA.filter(function (p) { return order.port.indexOf(p) >= 0; });
       $("flPorts").setAttribute("aria-pressed", String(fl.length > 0 && fl.every(function (p) { return F.ports.indexOf(p) >= 0; })));
     }
@@ -467,7 +466,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     sheet.classList.toggle("wide", name === "more");
     sheet.style.left = Math.max(0, Math.min(btn.offsetLeft - $("bar").scrollLeft, $("barwrap").clientWidth - w)) + "px";
     sheet.hidden = false; $("backdrop").hidden = false;
-    $("fPortQ").value = "";
+    $("fPortQ").value = ""; $("fShipQ").value = "";
     renderPane();
     sheet.querySelector(".sbody").scrollTop = 0;
     sheet.focus();
@@ -523,7 +522,8 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     F.lines.forEach(function (v) { tags.push([v, drop("lines", v)]); });
     if (F.ports.length > 3) tags.push([F.ports.length + " departure ports", wipe(["ports"])]);
     else F.ports.forEach(function (v) { tags.push(["From " + v, drop("ports", v)]); });
-    if (F.ship) tags.push([F.ship, wipe(["ship"])]);
+    if (F.ships.length > 3) tags.push([F.ships.length + " ships", wipe(["ships"])]);
+    else F.ships.forEach(function (v) { tags.push([v, drop("ships", v)]); });
     if (F.visit.trim()) tags.push(["Visits " + F.visit.trim(), wipe(["visit"])]);
     if (F.sea !== "") tags.push(["Max " + F.sea + " sea day" + (String(F.sea) === "1" ? "" : "s"), wipe(["sea"])]);
     if (F.dow.length) tags.push(["Departs " + F.dow.slice().sort().map(function (d) { return DOW[d]; }).join(", "), wipe(["dow"])]);
@@ -539,7 +539,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     if (skip !== "lines" && F.lines.length && F.lines.indexOf(r.line) < 0) return false;
     if (skip !== "ports" && F.ports.length && F.ports.indexOf(r.port) < 0) return false;
     if (F.dow.length && F.dow.indexOf(r.dow) < 0) return false;
-    if (F.ship && r.ship !== F.ship) return false;
+    if (skip !== "ships" && F.ships.length && F.ships.indexOf(r.ship) < 0) return false;
     if (F.from && r.start < F.from) return false;
     if (F.to && (r.end || r.start) > F.to) return false;
     if (F.nmin !== "" && (r.nights == null || r.nights < +F.nmin)) return false;
@@ -644,7 +644,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   new MutationObserver(applyPalette).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   /* ---------- wire up ---------- */
-  [["fFrom", "from"], ["fTo", "to"], ["fNmin", "nmin"], ["fNmax", "nmax"], ["fShip", "ship"], ["fVisit", "visit"],
+  [["fFrom", "from"], ["fTo", "to"], ["fNmin", "nmin"], ["fNmax", "nmax"], ["fVisit", "visit"],
    ["fPrice", "price"], ["fPpn", "ppn"], ["fSea", "sea"], ["sortBy", "sort"]].forEach(function (p) { wireInput(p[0], p[1]); });
   wireInput("fPriced", "priced", "checked");
   $("bar").addEventListener("click", function (e) { var b = e.target.closest(".fbtn"); if (b) openSheet(b.dataset.open, b); });
@@ -669,6 +669,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     changed();
   });
   $("fPortQ").addEventListener("input", renderPane);
+  $("fShipQ").addEventListener("input", renderPane);
   $("paneClear").addEventListener("click", function () { if (openPane) clearKeys(PANES[openPane].keys); });
   $("paneDone").addEventListener("click", function () { closeSheet(true); });
   $("sheetClose").addEventListener("click", function () { closeSheet(true); });
@@ -686,6 +687,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
 
   var savedF = recall("cruiseFilter.filters");
   if (savedF && typeof savedF === "object") {
+    if (typeof savedF.ship === "string" && savedF.ship) savedF.ships = [savedF.ship];
     var b = blank();
     Object.keys(b).forEach(function (k) {
       if (savedF[k] != null && Array.isArray(savedF[k]) === Array.isArray(b[k]) && typeof savedF[k] === typeof b[k]) F[k] = savedF[k];
