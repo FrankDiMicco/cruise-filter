@@ -2,7 +2,8 @@
 """Daily data pull for Cruise Filter.
 
 Pulls Royal Caribbean, Celebrity, Norwegian and Virgin Voyages over plain HTTP,
-carries forward any line that could not be pulled from the previous data file,
+and MSC and Princess through a headless browser (scripts/browser_lines.py).
+Carries forward any line that could not be pulled from the previous data file,
 tags regions, tracks price changes, and writes sailings.json + history.json.
 
     python3 scripts/pull.py --prev site/sailings.json --history site/history.json --out out
@@ -214,11 +215,26 @@ def pull_virgin():
     return rows
 
 
+def pull_msc():
+    import browser_lines
+    return browser_lines.pull_msc(row)
+
+
+def pull_princess():
+    import browser_lines
+    rows = browser_lines.pull_princess(row)
+    if sum(1 for r in rows if r["price_from"]) < 0.8 * len(rows):
+        raise RuntimeError("fewer than 80% of sailings came back with a price")
+    return rows
+
+
 PULLERS = [
     ("Royal Caribbean", lambda: pull_royal("Royal Caribbean", "https://www.royalcaribbean.com"), 2500),
     ("Celebrity", lambda: pull_royal("Celebrity", "https://www.celebritycruises.com", "C"), 1500),
     ("Norwegian", pull_norwegian, 1200),
     ("Virgin Voyages", pull_virgin, 200),
+    ("MSC", pull_msc, 4000),
+    ("Princess", pull_princess, 1500),
 ]
 
 
@@ -234,7 +250,9 @@ def main():
     ap.add_argument("--prev", default="")
     ap.add_argument("--history", default="")
     ap.add_argument("--out", default="out")
+    ap.add_argument("--only", default="", help="comma-separated line names to pull; the rest are carried forward")
     a = ap.parse_args()
+    only = {x.strip() for x in a.only.split(",") if x.strip()}
     now = datetime.now(TZ)
     stamp, today = now.strftime("%Y-%m-%dT%H:%M"), now.strftime("%Y-%m-%d")
 
@@ -248,6 +266,8 @@ def main():
 
     fresh = {}
     for name, fn, minimum in PULLERS:
+        if only and name not in only:
+            continue
         t0 = time.time()
         try:
             rows = fn()

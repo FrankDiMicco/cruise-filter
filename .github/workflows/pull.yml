@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["index.html", "scripts/pull.py", "scripts/regions.py", ".github/workflows/pull.yml"]
+    paths: ["index.html", "scripts/*.py", ".github/workflows/pull.yml"]
 permissions:
   contents: write
 concurrency:
@@ -22,6 +22,10 @@ jobs:
         with:
           ref: gh-pages
           path: site
+      - name: Install the headless browser
+        run: |
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
       - name: Pull cruise line data
         run: python3 scripts/pull.py --prev site/sailings.json --history site/history.json --out out
       - name: Publish the site
