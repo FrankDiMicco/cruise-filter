@@ -9,4 +9,4 @@ Live site: https://frankdimicco.github.io/cruise-filter/
 - `.github/workflows/pull.yml` runs the pull every morning and publishes the result to the `gh-pages` branch, which is what the live site serves. The data files (`sailings.json`, `history.json`) live only on that branch.
 - Royal Caribbean, Celebrity, Norwegian and Virgin Voyages refresh daily. MSC and Princess need a real browser, so their data is carried forward from the last manual pull.
 
-Prices are snapshots from each cruise line's public search at the time shown in the app. Confirm on the cruise line's site before booking.
+Prices are per person for two sharing a cabin, including taxes, fees and port expenses. All six lines report prices on that basis (checked in November 2026 against each line's own search page). Daily gratuities are not included on any line. Prices are snapshots from each cruise line's public search at the time shown in the app. Confirm on the cruise line's site before booking.

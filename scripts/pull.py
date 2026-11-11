@@ -68,7 +68,11 @@ RC_QUERY = """query CruiseSearch($filters: String, $sort: CruiseSearchSort, $pag
  cruiseSearch(filters: $filters, sort: $sort, pagination: $pagination) { results { total cruises { id productViewLink
   masterSailing { itinerary { name code sailingNights totalNights departurePort { name } ship { code name } days { number ports { port { name } } } } }
   sailings { itinerary { name code sailingNights totalNights departurePort { name } ship { code name } days { number ports { port { name } } } }
-   startDate endDate stateroomClassPricing { price { value } stateroomClass { id } } } } } } }"""
+   startDate endDate taxesAndFees { value } taxesAndFeesIncluded
+   stateroomClassPricing { price { value } stateroomClass { id } } } } } } }"""
+
+
+TAX_ADDED = {}  # line -> number of sailings whose taxes had to be added
 
 
 def merged(a, b):
@@ -108,11 +112,18 @@ def pull_royal(line, site, brand=None):
                 for n in names:
                     if n.lower() != "cruising" and n != depart and n not in ports:
                         ports.append(n)
+            # Prices from this feed include taxes and fees (checked Nov 2026: every sailing flagged
+            # taxesAndFeesIncluded). If a sailing is ever flagged otherwise, add the taxes so every
+            # line stays on the same all-in basis.
+            extra = 0
+            if s.get("taxesAndFeesIncluded") is False:
+                extra = money((s.get("taxesAndFees") or {}).get("value")) or 0
+                TAX_ADDED[line] = TAX_ADDED.get(line, 0) + 1
             raw = {}
             for p in s.get("stateroomClassPricing") or []:
                 v = money((p.get("price") or {}).get("value"))
                 if v and p.get("stateroomClass"):
-                    raw[p["stateroomClass"]["id"]] = v
+                    raw[p["stateroomClass"]["id"]] = round(v + extra, 2)
             cab = {"interior": raw.get("INTERIOR"), "outside": raw.get("OUTSIDE"), "balcony": raw.get("BALCONY"), "suite": raw.get("DELUXE")}
             start = (s.get("startDate") or "")[:10]
             code = own.get("code") or master.get("code")
@@ -275,7 +286,8 @@ def main():
                 raise RuntimeError(f"only {len(rows)} sailings, expected at least {minimum}")
             fresh[name] = rows
             lines[name] = stamp
-            print(f"PULL {name}: OK {len(rows)} sailings, {sum(1 for r in rows if r['price_from'])} priced, {time.time() - t0:.0f}s", flush=True)
+            note = f", taxes added to {TAX_ADDED[name]}" if TAX_ADDED.get(name) else ""
+            print(f"PULL {name}: OK {len(rows)} sailings, {sum(1 for r in rows if r['price_from'])} priced{note}, {time.time() - t0:.0f}s", flush=True)
         except Exception as e:
             print(f"PULL {name}: FAILED {type(e).__name__}: {str(e)[:300]} (keeping previous data)", flush=True)
 
