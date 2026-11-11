@@ -1,0 +1,38 @@
+name: Daily data pull
+on:
+  schedule:
+    - cron: "17 10 * * *"   # about 5:17 AM Eastern
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["index.html", "scripts/pull.py", "scripts/regions.py", ".github/workflows/pull.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: data-pull
+  cancel-in-progress: false
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the currently published data
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+      - name: Pull cruise line data
+        run: python3 scripts/pull.py --prev site/sailings.json --history site/history.json --out out
+      - name: Publish the site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp index.html .nojekyll out/
+          cd out
+          git init -q -b gh-pages
+          git config user.name "cruise-filter-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Data update $(date -u +%Y-%m-%d)"
+          git push -q --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

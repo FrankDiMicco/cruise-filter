@@ -298,7 +298,13 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   }
 
   /* ---------- state ---------- */
-  var data = [], isSample = true, scrapedAt = "", shown = PAGE;
+  var data = [], isSample = true, scrapedAt = "", shown = PAGE, lineStamps = null;
+  function staleNote() {
+    if (!lineStamps || !scrapedAt) return "";
+    var day = scrapedAt.slice(0, 10), old = Object.keys(lineStamps).filter(function (l) { return lineStamps[l] && lineStamps[l].slice(0, 10) < day; });
+    if (!old.length) return "";
+    return " Older data: " + old.map(function (l) { return esc(l) + " (" + esc(lineStamps[l].slice(0, 10)) + ")"; }).join(", ") + ".";
+  }
   var F = blank();
   function blank() {
     return { regions: [], lines: [], from: "", to: "", nmin: "", nmax: "", dow: [], ports: [], ship: "", visit: "", price: "", ppn: "", sea: "", priced: false, sort: "ppn", cabin: "" };
@@ -437,7 +443,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     $("notice").className = "notice" + (isSample ? "" : " real");
     $("notice").innerHTML = isSample
       ? "<b>Sample data.</b> These sailings and prices are invented so you can try the filter. Load a <code>sailings.json</code> file to see real ones."
-      : "<b>" + data.length.toLocaleString("en-US") + " sailings loaded</b>" + (scrapedAt ? ", pulled " + esc(scrapedAt.replace("T", " at ")) : "") + ". Prices are per person as shown in the cruise line's search at that time.";
+      : "<b>" + data.length.toLocaleString("en-US") + " sailings loaded</b>" + (scrapedAt ? ", pulled " + esc(scrapedAt.replace("T", " at ")) : "") + ". Prices are per person as shown in the cruise line's search at that time." + staleNote();
     $("useSample").hidden = isSample;
     $("fileLabel").textContent = isSample ? "Load sailings file" : "Load another file";
 
@@ -601,6 +607,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     if (!Array.isArray(rows) || !rows.length) return;
     if (savedOk && String(saved.stamp || "") > stamp) return;
     try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}
+    lineStamps = j.lines && typeof j.lines === "object" ? j.lines : null;
     setData(rows, false, stamp);
   }).catch(function () {});
 })();
