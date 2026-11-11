@@ -564,9 +564,11 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   }
 
   /* Carry the chosen cabin type into the cruise line's page, on the lines whose links accept one. */
+  var RCG_ROOM = ["&roomType=", { interior: "INTERIOR", outside: "OUTSIDE", balcony: "BALCONY", suite: "DELUXE" }];
   var CABIN_LINK = {
-    "Norwegian": ["&stateroomTypeCode=", { interior: "INSIDE", outside: "OCEANVIEW", balcony: "BALCONY", suite: "SUITE" }],
-    "Princess": ["&meta=", { interior: "I", outside: "O", balcony: "B", suite: "S" }]
+    "Royal Caribbean": RCG_ROOM,
+    "Celebrity": RCG_ROOM,
+    "Norwegian": ["&stateroomTypeCode=", { interior: "INSIDE", outside: "OCEANVIEW", balcony: "BALCONY", suite: "SUITE" }]
   };
   function cabinParam(line) {
     var c = CABIN_LINK[line];
