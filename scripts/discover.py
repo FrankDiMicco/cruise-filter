@@ -1,53 +1,58 @@
-"""One-off: see whether a headless browser on this machine can reach MSC and Princess, and log how Princess asks for prices."""
-import json, sys
+"""One-off: find the Princess pricing request variant that returns prices for every sailing."""
+import json
 from playwright.sync_api import sync_playwright
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-MSC_JS = """async () => { try { const r = await fetch('/api-search/1/indexes/*/queries', {method:'POST', headers:{accept:'application/json','Content-Type':'application/json','MSC-Locale':'en_US'}, body: JSON.stringify({requests:[{indexName:'prod-en-us-itinerary-deduplication-relevance', distinct:0, filters:'(noofAdults=2) AND (hasAir: false)', hitsPerPage:1, page:0}]})}); const t = await r.text(); return {status:r.status, head:t.slice(0,200)}; } catch (e) { return {err:String(e)}; } }"""
+KEEP = ("accept", "appid", "bookingcompany", "content-type", "pcl-client-id", "productcompany", "reqsrc", "x-pcl-traceapp", "referer")
 
 with sync_playwright() as p:
     b = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
     ctx = b.new_context(user_agent=UA, viewport={"width": 1366, "height": 900}, locale="en-US", timezone_id="America/New_York")
-    ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    pg = ctx.new_page()
+    cap = {}
+    def on_req(r):
+        if "pricing/v1/cruises" in r.url and "body" not in cap and r.method == "POST":
+            cap.update(url=r.url, body=json.loads(r.post_data), headers={k: v for k, v in r.headers.items() if k in KEEP})
+    pg.on("request", on_req)
+    pg.goto("https://www.princess.com/cruise-search/results/", wait_until="domcontentloaded", timeout=90000)
+    pg.wait_for_function("() => { const s = window.__NEXT_REDUX_STORE__; return s && (s.getState().pricing.cruises.data || []).length > 0; }", timeout=90000)
+    ids = pg.evaluate("() => window.__NEXT_REDUX_STORE__.getState().products.cruises.data.flatMap(p => (p.cruises || []).map(c => c.id))")
+    print("DISC ids:", len(ids), ids[:5], "captured:", bool(cap), flush=True)
 
-    # ---- MSC ----
-    try:
-        pg = ctx.new_page()
-        resp = pg.goto("https://www.msccruisesusa.com/search", wait_until="domcontentloaded", timeout=90000)
-        pg.wait_for_timeout(9000)
-        print("DISC MSC page:", resp.status if resp else None, "|", pg.title()[:80], flush=True)
-        print("DISC MSC api:", json.dumps(pg.evaluate(MSC_JS))[:400], flush=True)
-        pg.close()
-    except Exception as e:
-        print("DISC MSC FAILED:", type(e).__name__, str(e)[:300], flush=True)
+    def attempt(label, mutate):
+        body = json.loads(json.dumps(cap["body"]))
+        mutate(body)
+        try:
+            r = ctx.request.post(cap["url"], data=json.dumps(body), headers=cap["headers"], timeout=120000)
+            t = r.text()
+            try:
+                j = json.loads(t)
+                prods = j.get("products") or []
+                n = sum(len(x.get("cruises") or []) for x in prods)
+                metas = set()
+                for x in prods[:40]:
+                    for c in x.get("cruises") or []:
+                        for f in (c.get("pricing") or {}).get("fares") or []:
+                            for k in f.get("categories") or []:
+                                metas.add(k.get("metaId") or (k.get("id") or "?")[0])
+                print(f"DISC {label}: HTTP {r.status}, {len(t)} bytes, products {len(prods)}, cruises {n}, metas {sorted(metas)}", flush=True)
+            except Exception:
+                print(f"DISC {label}: HTTP {r.status}, {len(t)} bytes | {t[:300]}", flush=True)
+        except Exception as e:
+            print(f"DISC {label}: FAILED {type(e).__name__} {str(e)[:200]}", flush=True)
 
-    # ---- Princess ----
-    try:
-        pg = ctx.new_page()
-        seen = []
-        def on_req(r):
-            if "pricing/v1/cruises" in r.url and len(seen) < 3:
-                seen.append(r)
-                body = r.post_data or ""
-                print("DISC PCL req:", r.method, r.url, "| header names:", sorted(r.headers.keys()), flush=True)
-                print("DISC PCL body len:", len(body), flush=True)
-                for i in range(0, min(len(body), 6000), 1500):
-                    print("DISC PCL body:", body[i:i + 1500], flush=True)
-        def on_resp(r):
-            if "pricing/v1/cruises" in r.url:
-                try:
-                    t = r.text()
-                    print("DISC PCL resp:", r.status, len(t), "|", t[:300], flush=True)
-                except Exception as e:
-                    print("DISC PCL resp err:", e, flush=True)
-        pg.on("request", on_req)
-        pg.on("response", on_resp)
-        resp = pg.goto("https://www.princess.com/cruise-search/results/", wait_until="domcontentloaded", timeout=90000)
-        pg.wait_for_timeout(20000)
-        print("DISC PCL page:", resp.status if resp else None, "|", pg.title()[:80], flush=True)
-        info = pg.evaluate("""() => { const s = window.__NEXT_REDUX_STORE__; if (!s) return {store:false}; const st = s.getState(); const pr = (st.pricing.cruises.data || []); return {store:true, products:(st.products.cruises.data || []).length, pricing: pr.length, pricedCruises: pr.reduce((n, p) => n + (p.cruises || []).length, 0), settings: JSON.stringify(st.admin.data.ube.settings).slice(0, 600)}; }""")
-        print("DISC PCL store:", json.dumps(info)[:900], flush=True)
-        pg.close()
-    except Exception as e:
-        print("DISC PCL FAILED:", type(e).__name__, str(e)[:300], flush=True)
+    attempt("as-is", lambda b: None)
+    attempt("no leadInBy", lambda b: b.pop("leadInBy", None))
+    attempt("leadInBy=cruises", lambda b: b.__setitem__("leadInBy", "cruises"))
+    attempt("leadInBy=voyages", lambda b: b.__setitem__("leadInBy", "voyages"))
+    attempt("100 ids + itins", lambda b: b["filters"].__setitem__("cruises", ids[:100]))
+    def m(b):
+        b["filters"]["cruises"] = ids[:100]; b.pop("leadInBy", None)
+    attempt("100 ids, no leadInBy", m)
+    def m2(b):
+        b["filters"]["cruises"] = ids[:100]; b.pop("leadInBy", None); b["filters"].pop("meta", None)
+    attempt("100 ids, no leadInBy, no meta", m2)
+    def m3(b):
+        b["filters"]["cruises"] = ids[:400]; b.pop("leadInBy", None)
+    attempt("400 ids, no leadInBy", m3)
     b.close()
