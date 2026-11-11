@@ -7,7 +7,7 @@ tags regions, tracks price changes, and writes sailings.json + history.json.
 
     python3 scripts/pull.py --prev site/sailings.json --history site/history.json --out out
 """
-import argparse, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, hashlib, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
@@ -223,6 +223,9 @@ PULLERS = [
 
 
 def hist_key(r):
+    """Stable id for one sailing: its link when it has one, since two listings can share a ship and date."""
+    if r.get("url"):
+        return hashlib.md5(r["url"].encode()).hexdigest()[:14]
     return "|".join(str(r.get(k) or "") for k in ("line", "ship", "start_date", "nights", "departure_port"))
 
 
