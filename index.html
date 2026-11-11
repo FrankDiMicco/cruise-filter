@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cruise Filter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a sailing board. Filters are the control panel (sidebar on wide
+   screens, fold-down drawer on phones); each sailing is one manifest row with
+   hull-lettered ship name on the left and the fare block on the right. */
+:root {
+  --bg: #F5F6F8;
+  --panel: #FFFFFF;
+  --ink: #14181F;
+  --muted: #5E6673;
+  --line: #DCE0E6;
+  --sea: #334155;
+  --sea-soft: #E8ECF2;
+  --buoy: #2456E6;
+  --buoy-soft: #E4EBFD;
+  --on-buoy: #FFFFFF;
+  --display: "Big Shoulders Display", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0F1217; --panel: #181C24; --ink: #ECEFF4; --muted: #9AA3B2;
+    --line: #2A303B; --sea: #B8C2D3; --sea-soft: #252B36;
+    --buoy: #7C9AFF; --buoy-soft: #1B2646; --on-buoy: #0B1020;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+    --bg: #0F1217; --panel: #181C24; --ink: #ECEFF4; --muted: #9AA3B2;
+    --line: #2A303B; --sea: #B8C2D3; --sea-soft: #252B36;
+    --buoy: #7C9AFF; --buoy-soft: #1B2646; --on-buoy: #0B1020;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 15px/1.45 var(--body);
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--buoy); outline-offset: 2px; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; display: grid; gap: 16px; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; }
+h1 {
+  font: 800 clamp(34px, 9vw, 54px)/0.92 var(--display);
+  letter-spacing: 0.02em; text-transform: uppercase; margin: 0;
+}
+h1 span { color: var(--buoy); }
+.load { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn {
+  border: 1.5px solid var(--ink); background: transparent; border-radius: 4px;
+  padding: 8px 12px; font-weight: 600; cursor: pointer;
+}
+.btn.solid { background: var(--ink); color: var(--bg); }
+.btn.quiet { border-color: var(--line); color: var(--muted); font-weight: 500; }
+#file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.notice {
+  border-left: 5px solid var(--buoy); background: var(--buoy-soft);
+  padding: 10px 12px; border-radius: 0 4px 4px 0; font-size: 14px;
+}
+.notice.real { border-color: var(--sea); background: var(--sea-soft); }
+.notice b { font-weight: 700; }
+
+.window {
+  background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--buoy);
+  border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px;
+}
+.wtitle { font: 800 20px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.wfields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 460px; }
+.layout { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 880px) { .layout { grid-template-columns: 300px 1fr; } }
+
+details.filters { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+details.filters > summary {
+  list-style: none; cursor: pointer; padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  font: 800 20px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase;
+}
+details.filters > summary::-webkit-details-marker { display: none; }
+details.filters > summary .count { font: 600 13px var(--body); letter-spacing: 0; text-transform: none; color: var(--buoy); }
+details.filters > summary .tog { font: 600 13px var(--body); letter-spacing: 0; text-transform: none; border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; color: var(--ink); }
+details.filters > summary .tog::after { content: "Show \25BE"; }
+details.filters[open] > summary .tog::after { content: "Hide \25B4"; }
+details.filters > summary .right { display: flex; gap: 10px; align-items: center; }
+details.grp { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary .lab { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+details.grp > summary .sel { font-size: 12px; font-weight: 600; color: var(--buoy); margin-left: auto; }
+details.grp > summary::after { content: "\002B"; font-weight: 700; color: var(--muted); width: 14px; text-align: center; }
+details.grp[open] > summary::after { content: "\2212"; }
+details.grp[open] > summary { margin-bottom: 8px; }
+.theme { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.theme select { width: auto; background: var(--panel); padding: 7px 8px; }
+@media (min-width: 880px) { .layout.collapsed { grid-template-columns: 1fr; } }
+.fbody { padding: 2px 14px 14px; display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+.field { display: grid; gap: 6px; }
+.field > label, .field > .lab { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+input[type="number"], input[type="date"], input[type="text"], select {
+  width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--bg);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips.scroll { max-height: 148px; overflow-y: auto; padding-right: 2px; }
+.chip {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
+  padding: 5px 10px; font-size: 13px; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--panel); font-weight: 600; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.hint { font-size: 12px; color: var(--muted); }
+
+.summary {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px 18px; padding-bottom: 10px; border-bottom: 2px solid var(--ink);
+}
+.stats { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+.stat b { font: 800 30px/1 var(--display); letter-spacing: 0.02em; margin-right: 5px; }
+.stat span { font-size: 13px; color: var(--muted); }
+.sort { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.sort select { width: auto; background: var(--panel); }
+
+.results { display: grid; gap: 10px; margin-top: 12px; }
+.row {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 12px 14px; display: grid; gap: 8px 16px;
+  grid-template-columns: 1fr auto; align-items: start;
+}
+a.row.link { color: inherit; text-decoration: none; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+.go { grid-column: 1 / -1; font-size: 13px; font-weight: 700; color: var(--buoy); }
+.ship { font: 800 23px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; }
+.linetag { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sea); }
+.regtag { color: var(--muted); font-weight: 600; margin-left: 6px; }
+.itin { font-weight: 600; margin-top: 3px; }
+.meta { font-size: 13.5px; color: var(--muted); }
+.meta strong { color: var(--ink); font-weight: 600; }
+.ports { grid-column: 1 / -1; font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 8px; overflow-wrap: anywhere; }
+.ports em { font-style: normal; color: var(--muted); }
+.fare { text-align: right; white-space: nowrap; }
+.fare .pp { font: 800 28px/1 var(--display); letter-spacing: 0.02em; }
+.fare .unit { font-size: 11.5px; color: var(--muted); display: block; margin-top: 2px; }
+.pill {
+  display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 999px;
+  background: var(--sea-soft); color: var(--sea); font-size: 12.5px; font-weight: 700;
+}
+.pill.best { background: var(--buoy); color: var(--on-buoy); }
+.sampletag { display: inline-block; margin-top: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--buoy); }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; }
+.more { justify-self: center; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Cruise <span>Filter</span></h1>
+    <div class="load">
+      <label class="btn solid" for="file" id="fileLabel">Load sailings file</label>
+      <input type="file" id="file" accept=".json,application/json" multiple>
+      <button class="btn quiet" id="useSample" type="button" hidden>Back to sample data</button>
+      <div class="theme"><label for="palette">Colors</label>
+        <select id="palette"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
+    </div>
+  </header>
+
+  <div class="notice" id="notice"></div>
+
+  <section class="window" aria-label="Your travel window">
+    <div class="wtitle">Your window</div>
+    <div class="wfields">
+      <div class="field"><label for="fFrom">Leave on or after</label><input type="date" id="fFrom"></div>
+      <div class="field"><label for="fTo">Back by</label><input type="date" id="fTo"></div>
+    </div>
+    <div class="hint" id="windowNote"></div>
+  </section>
+
+  <div class="layout" id="layout">
+    <details class="filters" id="filterPanel">
+      <summary>Filters <span class="right"><span class="count" id="activeCount"></span><span class="tog"></span></span></summary>
+      <div class="fbody">
+        <div class="field"><span class="lab">Part of the world</span><div class="chips" id="fRegion"></div></div>
+        <div class="field"><span class="lab">Cruise line</span><div class="chips" id="fLine"></div></div>
+        <div class="field"><span class="lab">Nights</span>
+          <div class="pair"><input type="number" id="fNmin" min="1" inputmode="numeric" placeholder="Min" aria-label="Minimum nights"><input type="number" id="fNmax" min="1" inputmode="numeric" placeholder="Max" aria-label="Maximum nights"></div></div>
+        <div class="field"><span class="lab">Departs on</span><div class="chips" id="fDow"></div></div>
+        <div class="field"><span class="lab">Departure port</span><div class="chips scroll" id="fPort"></div></div>
+        <div class="field"><label for="fShip">Ship</label><select id="fShip"></select></div>
+        <div class="field"><label for="fVisit">Must visit</label>
+          <input type="text" id="fVisit" placeholder="e.g. Cozumel, St. Thomas" autocomplete="off">
+          <span class="hint">Separate ports with commas. All must be on the itinerary.</span></div>
+        <div class="field"><label for="fCabin">Cabin type</label>
+          <select id="fCabin"><option value="">Cheapest available</option><option value="interior">Interior</option><option value="outside">Ocean view</option><option value="balcony">Balcony</option><option value="suite">Suite</option></select></div>
+        <div class="field"><span class="lab">Max price per person</span>
+          <div class="pair"><input type="number" id="fPrice" min="0" inputmode="numeric" placeholder="Total $" aria-label="Maximum total price per person"><input type="number" id="fPpn" min="0" inputmode="numeric" placeholder="Per night $" aria-label="Maximum price per night"></div></div>
+        <div class="field"><label for="fSea">Max sea days</label><input type="number" id="fSea" min="0" inputmode="numeric" placeholder="Any"></div>
+        <label class="check" for="fPriced"><input type="checkbox" id="fPriced"> Hide sailings with no price</label>
+        <button class="btn quiet" id="reset" type="button">Clear all filters</button>
+      </div>
+    </details>
+
+    <main>
+      <div class="summary">
+        <div class="stats" id="stats"></div>
+        <div class="sort"><label for="sortBy">Sort</label>
+          <select id="sortBy">
+            <option value="ppn">Lowest price per night</option>
+            <option value="price">Lowest total price</option>
+            <option value="date">Soonest departure</option>
+            <option value="nights">Longest first</option>
+          </select></div>
+      </div>
+      <div class="results" id="results"></div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var PAGE = 60;
+  var CABIN = { interior: "interior", outside: "ocean view", balcony: "balcony", suite: "suite" };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function parseDay(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+  function isoOf(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
+  function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function recall(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+
+  /* ---------- sample data: invented sailings so the filter can be tried ---------- */
+  function sampleSailings() {
+    var seed = 20261109;
+    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    var T = [
+      ["Royal Caribbean", "Icon of the Seas", "7 Night Western Caribbean", 7, "Miami, Florida", ["Roatan, Honduras", "Costa Maya, Mexico", "Cozumel, Mexico", "Perfect Day at CocoCay"], 2, 1450],
+      ["Royal Caribbean", "Wonder of the Seas", "7 Night Eastern Caribbean", 7, "Port Canaveral, Florida", ["Philipsburg, St. Maarten", "Charlotte Amalie, St. Thomas", "Perfect Day at CocoCay"], 3, 1050],
+      ["Royal Caribbean", "Utopia of the Seas", "3 Night Bahamas Getaway", 3, "Port Canaveral, Florida", ["Nassau, Bahamas", "Perfect Day at CocoCay"], 0, 520],
+      ["Royal Caribbean", "Odyssey of the Seas", "8 Night Southern Caribbean", 8, "Fort Lauderdale, Florida", ["Oranjestad, Aruba", "Willemstad, Curacao", "Labadee, Haiti"], 4, 980],
+      ["Royal Caribbean", "Ovation of the Seas", "7 Night Alaska Glacier", 7, "Seattle, Washington", ["Juneau, Alaska", "Skagway, Alaska", "Victoria, British Columbia"], 3, 1120],
+      ["Celebrity", "Celebrity Beyond", "7 Night Eastern Caribbean", 7, "Fort Lauderdale, Florida", ["San Juan, Puerto Rico", "Tortola, British Virgin Islands", "Basseterre, St. Kitts"], 3, 1240],
+      ["Celebrity", "Celebrity Ascent", "10 Night Greek Isles", 10, "Rome (Civitavecchia), Italy", ["Naples, Italy", "Santorini, Greece", "Mykonos, Greece", "Athens (Piraeus), Greece", "Kotor, Montenegro"], 3, 2150],
+      ["Celebrity", "Celebrity Edge", "7 Night Alaska Dawes Glacier", 7, "Seattle, Washington", ["Ketchikan, Alaska", "Juneau, Alaska", "Skagway, Alaska", "Victoria, British Columbia"], 2, 1180],
+      ["Norwegian", "Norwegian Aqua", "7 Night Caribbean", 7, "Port Canaveral, Florida", ["Puerto Plata, Dominican Republic", "Charlotte Amalie, St. Thomas", "Tortola, British Virgin Islands", "Great Stirrup Cay"], 2, 1090],
+      ["Norwegian", "Norwegian Viva", "9 Night Mediterranean", 9, "Lisbon, Portugal", ["Cadiz, Spain", "Ibiza, Spain", "Barcelona, Spain", "Cannes, France", "Florence (Livorno), Italy"], 2, 1790],
+      ["Norwegian", "Norwegian Getaway", "4 Night Bahamas", 4, "Miami, Florida", ["Nassau, Bahamas", "Great Stirrup Cay"], 1, 410],
+      ["Norwegian", "Pride of America", "7 Night Hawaii Inter-Island", 7, "Honolulu, Hawaii", ["Kahului, Maui", "Hilo, Hawaii", "Kona, Hawaii", "Nawiliwili, Kauai"], 0, 2090],
+      ["MSC", "MSC World America", "7 Night Western Caribbean", 7, "Miami, Florida", ["Costa Maya, Mexico", "Cozumel, Mexico", "Roatan, Honduras", "Ocean Cay MSC Marine Reserve"], 2, 720],
+      ["MSC", "MSC Seashore", "4 Night Bahamas", 4, "Port Canaveral, Florida", ["Nassau, Bahamas", "Ocean Cay MSC Marine Reserve"], 1, 330],
+      ["MSC", "MSC World Europa", "7 Night Western Mediterranean", 7, "Barcelona, Spain", ["Marseille, France", "Genoa, Italy", "Naples, Italy", "Messina, Italy", "Valletta, Malta"], 1, 890],
+      ["Princess", "Sun Princess", "7 Night Eastern Caribbean", 7, "Fort Lauderdale, Florida", ["Princess Cays, Bahamas", "San Juan, Puerto Rico", "Charlotte Amalie, St. Thomas"], 3, 880],
+      ["Princess", "Discovery Princess", "7 Night Inside Passage", 7, "Vancouver, British Columbia", ["Ketchikan, Alaska", "Juneau, Alaska", "Skagway, Alaska"], 3, 950],
+      ["Princess", "Regal Princess", "12 Night British Isles", 12, "Southampton, England", ["Cork (Cobh), Ireland", "Dublin, Ireland", "Belfast, Northern Ireland", "Glasgow (Greenock), Scotland", "Edinburgh (South Queensferry), Scotland"], 4, 2380]
+    ];
+    var out = [], base = new Date(2026, 11, 5);
+    T.forEach(function (t, i) {
+      var seasonal = /Alaska|Passage|Mediterranean|Greek|British/.test(t[2]);
+      var d = new Date(base.getTime());
+      d.setDate(d.getDate() + (i * 3) % 7 + (seasonal ? 150 : 0));
+      var count = seasonal ? 7 : 12, gap = t[3] <= 4 ? 7 : (t[3] > 7 ? t[3] * 2 : 14);
+      for (var k = 0; k < count; k++) {
+        var start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + k * gap);
+        var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + t[3]);
+        var m = start.getMonth();
+        var peak = (m === 11 || m === 2 || m === 5 || m === 6) ? 1.28 : 1;
+        var price = rnd() < 0.05 ? null : Math.round(t[7] * peak * (0.86 + rnd() * 0.32) / 5) * 5 - 1;
+        out.push({
+          line: t[0], ship: t[1], itinerary: t[2], nights: t[3], departure_port: t[4],
+          start_date: isoOf(start), end_date: isoOf(end), ports: t[5], port_count: t[5].length,
+          sea_days: t[6], price_from: price, price_per_night: price ? Math.round(price / t[3] * 100) / 100 : null
+        });
+      }
+    });
+    return out;
+  }
+
+  /* ---------- state ---------- */
+  var data = [], isSample = true, scrapedAt = "", shown = PAGE;
+  var F = blank();
+  function blank() {
+    return { regions: [], lines: [], from: "", to: "", nmin: "", nmax: "", dow: [], ports: [], ship: "", visit: "", price: "", ppn: "", sea: "", priced: false, sort: "ppn", cabin: "" };
+  }
+
+  function normalize(rows) {
+    return rows.filter(function (r) { return r && typeof r === "object" && r.start_date; }).map(function (r) {
+      var ports = Array.isArray(r.ports) ? r.ports.map(String) : String(r.ports || "").split("|").map(function (s) { return s.trim(); }).filter(Boolean);
+      var nights = Number(r.nights) || null;
+      var price = Number(r.price_from) > 0 ? Number(r.price_from) : null;
+      var d = parseDay(r.start_date);
+      return {
+        region: String(r.region || "Other"),
+        url: /^https:\/\/[a-z0-9.-]+\.(royalcaribbean|celebritycruises|ncl|msccruisesusa|princess|virginvoyages)\.com\//.test(String(r.url || "")) ? String(r.url) : "",
+        line: String(r.line || "Unknown line"), ship: String(r.ship || "Unknown ship"),
+        itinerary: String(r.itinerary || ""), nights: nights,
+        port: String(r.departure_port || "Unknown port"),
+        start: String(r.start_date).slice(0, 10),
+        end: r.end_date ? String(r.end_date).slice(0, 10)
+          : (d && nights ? isoOf(new Date(d.getFullYear(), d.getMonth(), d.getDate() + nights)) : ""),
+        dow: d ? d.getDay() : null, ports: ports,
+        sea: r.sea_days == null ? null : Number(r.sea_days),
+        low: price, cab: { interior: num(r.price_interior), outside: num(r.price_outside), balcony: num(r.price_balcony), suite: num(r.price_suite) },
+        price: price, ppn: price && nights ? price / nights : null
+      };
+    });
+  }
+  function num(v) { return Number(v) > 0 ? Number(v) : null; }
+  function applyCabin() {
+    data.forEach(function (r) {
+      r.price = F.cabin ? r.cab[F.cabin] : r.low;
+      r.ppn = r.price && r.nights ? r.price / r.nights : null;
+    });
+  }
+
+  function setData(rows, sample, stamp) {
+    data = normalize(rows); isSample = sample; scrapedAt = stamp || "";
+    F.lines = F.lines.filter(function (v) { return has("line", v); });
+    F.regions = F.regions.filter(function (v) { return has("region", v); });
+    F.ports = F.ports.filter(function (v) { return has("port", v); });
+    if (F.ship && !has("ship", F.ship)) F.ship = "";
+    applyCabin(); buildOptions(); syncInputs(); render();
+  }
+  function has(key, v) { return data.some(function (r) { return r[key] === v; }); }
+  function counts(key) {
+    var m = {};
+    data.forEach(function (r) { m[r[key]] = (m[r[key]] || 0) + 1; });
+    return Object.keys(m).sort(function (a, b) { return m[b] - m[a] || a.localeCompare(b); });
+  }
+
+  /* ---------- controls ---------- */
+  function chipSet(el, values, labels, selected) {
+    el.innerHTML = values.map(function (v, i) {
+      return '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (selected.indexOf(v) >= 0) + '">' + esc(labels ? labels[i] : v) + "</button>";
+    }).join("");
+  }
+  function buildOptions() {
+    chipSet($("fRegion"), counts("region"), null, F.regions);
+    chipSet($("fLine"), counts("line"), null, F.lines);
+    chipSet($("fPort"), counts("port"), null, F.ports);
+    chipSet($("fDow"), [0, 1, 2, 3, 4, 5, 6], DOW, F.dow);
+    var ships = counts("ship").sort();
+    $("fShip").innerHTML = '<option value="">Any ship</option>' + ships.map(function (s) {
+      return '<option value="' + esc(s) + '">' + esc(s) + "</option>";
+    }).join("");
+  }
+  function syncInputs() {
+    $("fFrom").value = F.from; $("fTo").value = F.to; $("fNmin").value = F.nmin; $("fNmax").value = F.nmax;
+    $("fShip").value = F.ship; $("fVisit").value = F.visit; $("fPrice").value = F.price; $("fPpn").value = F.ppn;
+    $("fSea").value = F.sea; $("fCabin").value = F.cabin; $("fPriced").checked = F.priced; $("sortBy").value = F.sort;
+  }
+  function toggle(list, v) { var i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); }
+  function wireChips(id, key, numeric) {
+    $(id).addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      toggle(F[key], numeric ? Number(b.dataset.v) : b.dataset.v);
+      b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+      changed();
+    });
+  }
+  function wireInput(id, key, prop) {
+    $(id).addEventListener("input", function () { F[key] = prop ? $(id)[prop] : $(id).value; changed(); });
+  }
+  function changed() { shown = PAGE; store("cruiseFilter.filters", F); render(); }
+
+  /* ---------- filtering ---------- */
+  function activeCount() {
+    var n = 0;
+    ["regions", "lines", "dow", "ports"].forEach(function (k) { if (F[k].length) n++; });
+    ["from", "to", "nmin", "nmax", "ship", "visit", "price", "ppn", "sea", "cabin"].forEach(function (k) { if (F[k] !== "") n++; });
+    return n + (F.priced ? 1 : 0);
+  }
+  function matches(r) {
+    if (F.regions.length && F.regions.indexOf(r.region) < 0) return false;
+    if (F.lines.length && F.lines.indexOf(r.line) < 0) return false;
+    if (F.ports.length && F.ports.indexOf(r.port) < 0) return false;
+    if (F.dow.length && F.dow.indexOf(r.dow) < 0) return false;
+    if (F.ship && r.ship !== F.ship) return false;
+    if (F.from && r.start < F.from) return false;
+    if (F.to && (r.end || r.start) > F.to) return false;
+    if (F.nmin !== "" && (r.nights == null || r.nights < +F.nmin)) return false;
+    if (F.nmax !== "" && (r.nights == null || r.nights > +F.nmax)) return false;
+    if (F.sea !== "" && (r.sea == null || r.sea > +F.sea)) return false;
+    if (F.priced && r.price == null) return false;
+    if (F.price !== "" && (r.price == null || r.price > +F.price)) return false;
+    if (F.ppn !== "" && (r.ppn == null || r.ppn > +F.ppn)) return false;
+    if (F.visit.trim()) {
+      var hay = r.ports.join(" | ").toLowerCase();
+      var want = F.visit.toLowerCase().split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+      for (var i = 0; i < want.length; i++) if (hay.indexOf(want[i]) < 0) return false;
+    }
+    return true;
+  }
+  function sorter(a, b) {
+    var big = 1e12;
+    if (F.sort === "price") return (a.price == null ? big : a.price) - (b.price == null ? big : b.price) || a.start.localeCompare(b.start);
+    if (F.sort === "date") return a.start.localeCompare(b.start) || (a.price || big) - (b.price || big);
+    if (F.sort === "nights") return (b.nights || 0) - (a.nights || 0) || a.start.localeCompare(b.start);
+    return (a.ppn == null ? big : a.ppn) - (b.ppn == null ? big : b.ppn) || a.start.localeCompare(b.start);
+  }
+
+  /* ---------- render ---------- */
+  function dateRange(r) {
+    var s = parseDay(r.start), e = parseDay(r.end);
+    if (!s) return esc(r.start);
+    var out = DOW[s.getDay()] + ", " + MON[s.getMonth()] + " " + s.getDate() + ", " + s.getFullYear();
+    if (e) out += " to " + MON[e.getMonth()] + " " + e.getDate();
+    return out;
+  }
+  function render() {
+    var list = data.filter(matches).sort(sorter);
+    var priced = list.filter(function (r) { return r.price != null; });
+    var lowP = priced.reduce(function (m, r) { return Math.min(m, r.price); }, Infinity);
+    var lowN = priced.reduce(function (m, r) { return r.ppn != null ? Math.min(m, r.ppn) : m; }, Infinity);
+
+    $("notice").className = "notice" + (isSample ? "" : " real");
+    $("notice").innerHTML = isSample
+      ? "<b>Sample data.</b> These sailings and prices are invented so you can try the filter. Load a <code>sailings.json</code> file to see real ones."
+      : "<b>" + data.length.toLocaleString("en-US") + " sailings loaded</b>" + (scrapedAt ? ", pulled " + esc(scrapedAt.replace("T", " at ")) : "") + ". Prices are per person as shown in the cruise line's search at that time.";
+    $("useSample").hidden = isSample;
+    $("fileLabel").textContent = isSample ? "Load sailings file" : "Load another file";
+
+    var wf = parseDay(F.from), wt = parseDay(F.to), note = "Shows only cruises that leave and return inside these dates.";
+    if (wf && wt) {
+      var span = Math.round((wt - wf) / 86400000);
+      note = span < 0 ? "The return date is before the leave date." : "A " + span + "-night window. Only cruises that leave and return inside it are shown.";
+    }
+    $("windowNote").textContent = note;
+    var n = activeCount();
+    $("activeCount").textContent = n ? n + " active" : "";
+    groupBadges();
+    $("stats").innerHTML =
+      '<div class="stat"><b>' + list.length.toLocaleString("en-US") + "</b><span>of " + data.length.toLocaleString("en-US") + " sailings match</span></div>" +
+      (priced.length ? '<div class="stat"><b>' + money(lowP) + "</b><span>lowest fare</span></div>" +
+        '<div class="stat"><b>' + money(lowN) + "</b><span>lowest per night</span></div>" : "");
+
+    if (!list.length) {
+      $("results").innerHTML = '<div class="empty">No sailings match these filters. Loosen one or clear them all.</div>';
+      return;
+    }
+    var html = list.slice(0, shown).map(function (r) {
+      var best = r.ppn != null && r.ppn === lowN;
+      var fare = r.price != null
+        ? '<div class="pp">' + money(r.price) + '</div><span class="unit">' + (F.cabin ? "per person, " + CABIN[F.cabin] : "per person from") + "</span>" +
+          (r.ppn != null ? '<span class="pill' + (best ? " best" : "") + '">' + money(r.ppn) + " / night</span>" : "") +
+          (isSample ? '<br><span class="sampletag">SAMPLE</span>' : "")
+        : '<span class="unit">' + (F.cabin ? "No " + CABIN[F.cabin] + " price" : "No price listed") + "</span>";
+      var sea = r.sea == null ? "" : " · <strong>" + r.sea + "</strong> sea day" + (r.sea === 1 ? "" : "s");
+      var open = r.url ? '<a class="row link" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc("Open " + r.ship + ", " + r.start + ", on the " + r.line + " site") + '">' : '<article class="row">';
+      return open + '<div>' +
+        '<div class="linetag">' + esc(r.line) + (r.region !== "Other" ? ' <span class="regtag">' + esc(r.region) + "</span>" : "") + "</div>" +
+        '<div class="ship">' + esc(r.ship) + "</div>" +
+        '<div class="itin">' + esc(r.itinerary) + "</div>" +
+        '<div class="meta">' + dateRange(r) + "</div>" +
+        '<div class="meta">From <strong>' + esc(r.port) + "</strong>" + (r.nights ? " · <strong>" + r.nights + "</strong> nights" : "") + sea + "</div>" +
+        '</div><div class="fare">' + fare + "</div>" +
+        (r.ports.length ? '<div class="ports"><em>Visits</em> ' + r.ports.map(esc).join(" · ") + "</div>" : "") +
+        (r.url ? '<div class="go">View on ' + esc(r.line) + " \u2197</div></a>" : "</article>");
+    }).join("");
+    if (list.length > shown) html += '<button type="button" class="btn more" id="more">Show ' + Math.min(PAGE, list.length - shown) + " more</button>";
+    $("results").innerHTML = html;
+  }
+
+  /* ---------- file loading ---------- */
+  function readFiles(files) {
+    var all = [], stamp = "", left = files.length, bad = [];
+    if (!left) return;
+    Array.prototype.forEach.call(files, function (f) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var j = JSON.parse(reader.result);
+          var rows = Array.isArray(j) ? j : j.sailings;
+          if (!Array.isArray(rows)) throw new Error("no sailings");
+          all = all.concat(rows);
+          if (j.scraped_at && String(j.scraped_at) > stamp) stamp = String(j.scraped_at);
+        } catch (e) { bad.push(f.name); }
+        done();
+      };
+      reader.onerror = function () { bad.push(f.name); done(); };
+      reader.readAsText(f);
+    });
+    function done() {
+      if (--left) return;
+      if (all.length) {
+        setData(all, false, stamp);
+        store("cruiseFilter.data", { stamp: stamp, rows: all });
+      }
+      if (bad.length) {
+        $("notice").className = "notice";
+        $("notice").innerHTML = "<b>Could not read " + esc(bad.join(", ")) + ".</b> Pick the <code>sailings.json</code> file the scraper saved, not the CSV.";
+      }
+    }
+  }
+
+  /* ---------- color palettes ---------- */
+  var KEYS = ["bg", "panel", "ink", "muted", "line", "sea", "sea-soft", "buoy", "buoy-soft", "on-buoy"];
+  var PAL = {
+    clean: null,
+    midnight: { dark: ["#0A1024", "#121A36", "#EEF1FA", "#98A2C4", "#263058", "#7FB2FF", "#1A2750", "#F2B84B", "#3A2E12", "#1A1304"] },
+    tropic: { light: ["#F3F8F6", "#FFFFFF", "#10231E", "#55706A", "#D3E2DD", "#0B7A63", "#DAF0EA", "#D93A62", "#FCE3E9", "#FFFFFF"],
+              dark: ["#0A1714", "#11231F", "#E6F2EE", "#8FAAA3", "#23403A", "#4FC9AE", "#143830", "#FF7090", "#40182A", "#2A0812"] },
+    harbor: { light: ["#EEF3F4", "#FFFFFF", "#0F2430", "#5A6F7A", "#D2DDE1", "#17717B", "#DCEEF0", "#D9481F", "#FBE6DF", "#FFFFFF"],
+              dark: ["#0B171E", "#12232D", "#E7EFF2", "#93A8B2", "#25404D", "#63BEC7", "#173A42", "#FF7B52", "#44201A", "#2A0D04"] }
+  };
+  var palette = "clean", mq = window.matchMedia("(prefers-color-scheme: dark)");
+  function applyPalette() {
+    var root = document.documentElement, p = PAL[palette], t = root.getAttribute("data-theme");
+    var dark = t ? t === "dark" : mq.matches;
+    var vals = p ? (p.light ? (dark ? p.dark : p.light) : p.dark) : null;
+    KEYS.forEach(function (k, i) { if (vals) root.style.setProperty("--" + k, vals[i]); else root.style.removeProperty("--" + k); });
+    root.style.colorScheme = vals ? (p.light && !dark ? "light" : "dark") : "";
+  }
+  var sp = recall("cruiseFilter.palette"); if (typeof sp === "string" && sp in PAL) palette = sp;
+  $("palette").value = palette; applyPalette();
+  $("palette").addEventListener("change", function () { palette = $("palette").value; store("cruiseFilter.palette", palette); applyPalette(); });
+  if (mq.addEventListener) mq.addEventListener("change", applyPalette);
+  new MutationObserver(applyPalette).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  /* ---------- collapsible filter groups ---------- */
+  var GROUP_KEYS = { "Part of the world": ["regions"], "Cruise line": ["lines"], "Nights": ["nmin", "nmax"], "Departs on": ["dow"], "Departure port": ["ports"],
+    "Ship": ["ship"], "Must visit": ["visit"], "Cabin type": ["cabin"], "Max price per person": ["price", "ppn"], "Max sea days": ["sea"] };
+  var closedGroups = recall("cruiseFilter.closedGroups"); if (!Array.isArray(closedGroups)) closedGroups = ["Departure port", "Ship"];
+  var groups = [];
+  Array.prototype.forEach.call(document.querySelectorAll(".fbody > .field"), function (f) {
+    var lab = f.querySelector(".lab") || f.querySelector("label"); if (!lab) return;
+    var name = lab.textContent.trim(), d = document.createElement("details"), s = document.createElement("summary");
+    var a = document.createElement("span"), b = document.createElement("span");
+    a.className = "lab"; a.textContent = name; b.className = "sel"; s.appendChild(a); s.appendChild(b);
+    var ctl = f.querySelector("input, select"); if (lab.tagName === "LABEL" && ctl) ctl.setAttribute("aria-label", name);
+    lab.remove(); d.className = "grp"; d.appendChild(s); f.parentNode.insertBefore(d, f); d.appendChild(f);
+    d.open = closedGroups.indexOf(name) < 0;
+    d.addEventListener("toggle", function () {
+      closedGroups = groups.filter(function (g) { return !g.el.open; }).map(function (g) { return g.name; });
+      store("cruiseFilter.closedGroups", closedGroups);
+    });
+    groups.push({ name: name, el: d, sel: b });
+  });
+  function groupBadges() {
+    groups.forEach(function (g) {
+      var n = 0, set = false;
+      (GROUP_KEYS[g.name] || []).forEach(function (k) { if (Array.isArray(F[k])) n += F[k].length; else if (F[k] !== "") set = true; });
+      g.sel.textContent = n ? n + " selected" : (set ? "set" : "");
+    });
+  }
+
+  /* ---------- wire up ---------- */
+  wireChips("fRegion", "regions"); wireChips("fLine", "lines"); wireChips("fPort", "ports"); wireChips("fDow", "dow", true);
+  [["fFrom", "from"], ["fTo", "to"], ["fNmin", "nmin"], ["fNmax", "nmax"], ["fShip", "ship"], ["fVisit", "visit"],
+   ["fPrice", "price"], ["fPpn", "ppn"], ["fSea", "sea"], ["sortBy", "sort"]].forEach(function (p) { wireInput(p[0], p[1]); });
+  wireInput("fPriced", "priced", "checked");
+  $("fCabin").addEventListener("change", function () { F.cabin = $("fCabin").value; applyCabin(); changed(); });
+  $("reset").addEventListener("click", function () { var s = F.sort; F = blank(); F.sort = s; applyCabin(); buildOptions(); syncInputs(); changed(); });
+  $("results").addEventListener("click", function (e) { if (e.target.id === "more") { shown += PAGE; render(); } });
+  $("file").addEventListener("change", function (e) { readFiles(e.target.files); e.target.value = ""; });
+  $("useSample").addEventListener("click", function () {
+    try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}
+    setData(sampleSailings(), true, "");
+  });
+
+  var savedF = recall("cruiseFilter.filters");
+  if (savedF && typeof savedF === "object") {
+    var b = blank();
+    Object.keys(b).forEach(function (k) {
+      if (savedF[k] != null && Array.isArray(savedF[k]) === Array.isArray(b[k]) && typeof savedF[k] === typeof b[k]) F[k] = savedF[k];
+    });
+  }
+  var wide = window.matchMedia("(min-width: 880px)").matches, panelPref = recall("cruiseFilter.panelOpen");
+  $("filterPanel").open = typeof panelPref === "boolean" ? panelPref : wide;
+  $("layout").classList.toggle("collapsed", !$("filterPanel").open);
+  $("filterPanel").addEventListener("toggle", function () {
+    store("cruiseFilter.panelOpen", $("filterPanel").open);
+    $("layout").classList.toggle("collapsed", !$("filterPanel").open);
+  });
+  var saved = recall("cruiseFilter.data");
+  var savedOk = saved && Array.isArray(saved.rows) && saved.rows.length;
+  if (savedOk) setData(saved.rows, false, saved.stamp); else setData(sampleSailings(), true, "");
+  fetch("sailings.json").then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) {
+    var rows = Array.isArray(j) ? j : j.sailings, stamp = String(j.scraped_at || "");
+    if (!Array.isArray(rows) || !rows.length) return;
+    if (savedOk && String(saved.stamp || "") > stamp) return;
+    try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}
+    setData(rows, false, stamp);
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>
