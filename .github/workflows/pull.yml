@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["index.html", "scripts/*.py", ".github/workflows/pull.yml"]
+    paths: ["index.html", "scripts/pull.py", "scripts/browser_lines.py", "scripts/regions.py", ".github/workflows/pull.yml"]
 permissions:
   contents: write
 concurrency:
