@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Layout idea: a sailing board. Filters are the control panel (sidebar on wide
-   screens, fold-down drawer on phones); each sailing is one manifest row with
+/* Layout idea: a sailing board. A sticky bar holds the five everyday filters plus
+   "More"; each opens a panel (dropdown on wide screens, slide-up sheet on phones).
+   Active filters show as removable tags. Each sailing is one manifest row with
    hull-lettered ship name on the left and the fare block on the right. */
 :root {
   --bg: #F5F6F8;
@@ -71,55 +72,88 @@ h1 span { color: var(--buoy); }
 .notice.real { border-color: var(--sea); background: var(--sea-soft); }
 .notice b { font-weight: 700; }
 
-.window {
-  background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--buoy);
-  border-radius: 6px; padding: 12px 14px; display: grid; gap: 10px;
-}
-.wtitle { font: 800 20px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
-.wfields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 460px; }
-.layout { display: grid; gap: 16px; align-items: start; }
-@media (min-width: 880px) { .layout { grid-template-columns: 300px 1fr; } }
-
-details.filters { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
-details.filters > summary {
-  list-style: none; cursor: pointer; padding: 12px 14px;
-  display: flex; justify-content: space-between; align-items: center;
-  font: 800 20px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase;
-}
-details.filters > summary::-webkit-details-marker { display: none; }
-details.filters > summary .count { font: 600 13px var(--body); letter-spacing: 0; text-transform: none; color: var(--buoy); }
-details.filters > summary .tog { font: 600 13px var(--body); letter-spacing: 0; text-transform: none; border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; color: var(--ink); }
-details.filters > summary .tog::after { content: "Show \25BE"; }
-details.filters[open] > summary .tog::after { content: "Hide \25B4"; }
-details.filters > summary .right { display: flex; gap: 10px; align-items: center; }
-details.grp { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-details.grp > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-details.grp > summary::-webkit-details-marker { display: none; }
-details.grp > summary .lab { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-details.grp > summary .sel { font-size: 12px; font-weight: 600; color: var(--buoy); margin-left: auto; }
-details.grp > summary::after { content: "\002B"; font-weight: 700; color: var(--muted); width: 14px; text-align: center; }
-details.grp[open] > summary::after { content: "\2212"; }
-details.grp[open] > summary { margin-bottom: 8px; }
 .theme { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
 .theme select { width: auto; background: var(--panel); padding: 7px 8px; }
-@media (min-width: 880px) { .layout.collapsed { grid-template-columns: 1fr; } }
-.fbody { padding: 2px 14px 14px; display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+.wrap > * { min-width: 0; }
+.barwrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 8px 0; margin: -8px 0; }
+.bar { display: flex; gap: 8px; flex-wrap: wrap; }
+.fbtn {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; flex: none;
+  border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 7px 30px 7px 12px; cursor: pointer; position: relative; text-align: left; white-space: nowrap;
+}
+.fbtn::after { content: "\25BE"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+.fbtn .k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.fbtn .v { font-size: 14px; font-weight: 600; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.fbtn.on { border-color: var(--buoy); background: var(--buoy-soft); }
+.fbtn.on .k { color: var(--buoy); }
+.fbtn[aria-expanded="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+
+.backdrop { display: none; }
+.sheet {
+  position: absolute; top: calc(100% - 2px); left: 0; width: 360px; max-width: 100%;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column;
+  max-height: min(72vh, 600px);
+}
+.sheet[hidden] { display: none; }
+.sheet.wide { width: 460px; }
+.sheet:focus { outline: none; }
+.shead {
+  display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px;
+  font: 800 19px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.sclose { border: 0; background: none; font-size: 24px; line-height: 1; cursor: pointer; color: var(--muted); padding: 0 6px; }
+.sbody { padding: 4px 14px 14px; overflow-y: auto; }
+.pane { display: grid; gap: 14px; }
+.pane[hidden] { display: none; }
+.sfoot { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+@media (max-width: 699px) {
+  .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .bar::-webkit-scrollbar { display: none; }
+  .backdrop:not([hidden]) { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 30; }
+  .sheet, .sheet.wide {
+    position: fixed; left: 0 !important; right: 0; bottom: 0; top: auto; width: auto; max-width: none;
+    max-height: 82vh; border-radius: 14px 14px 0 0; z-index: 31;
+  }
+  .sfoot { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .sfoot .btn.solid { flex: 1; }
+}
+
+.opts { display: grid; }
+.opts.scroll { max-height: 216px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; }
+.opt { display: flex; align-items: center; gap: 10px; padding: 8px 2px; cursor: pointer; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.opt:last-child { border-bottom: 0; }
+.opt input { width: 17px; height: 17px; accent-color: var(--buoy); margin: 0; flex: none; }
+.opt .ct { margin-left: auto; color: var(--muted); font-size: 13px; }
+.opt.zero { opacity: 0.45; }
+
 .field { display: grid; gap: 6px; }
 .field > label, .field > .lab { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-input[type="number"], input[type="date"], input[type="text"], select {
+input[type="number"], input[type="date"], input[type="text"], input[type="search"], select {
   width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--line);
   border-radius: 4px; background: var(--bg);
 }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chips.scroll { max-height: 148px; overflow-y: auto; padding-right: 2px; }
 .chip {
   border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
-  padding: 5px 10px; font-size: 13px; cursor: pointer;
+  padding: 6px 11px; font-size: 13px; cursor: pointer;
 }
 .chip[aria-pressed="true"] { background: var(--sea); border-color: var(--sea); color: var(--panel); font-weight: 600; }
 .check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.check input { width: 17px; height: 17px; accent-color: var(--buoy); margin: 0; }
 .hint { font-size: 12px; color: var(--muted); }
+
+.active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.active:empty { display: none; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--buoy); background: var(--buoy-soft);
+  color: var(--ink); border-radius: 999px; padding: 4px 8px 4px 11px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.tag span { color: var(--buoy); font-size: 16px; line-height: 1; }
+.clearall { border: 0; background: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 4px 6px; }
 
 .summary {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -172,38 +206,67 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
 
   <div class="notice" id="notice"></div>
 
-  <section class="window" aria-label="Your travel window">
-    <div class="wtitle">Your window</div>
-    <div class="wfields">
-      <div class="field"><label for="fFrom">Leave on or after</label><input type="date" id="fFrom"></div>
-      <div class="field"><label for="fTo">Back by</label><input type="date" id="fTo"></div>
+  <div class="barwrap" id="barwrap">
+    <div class="bar" id="bar" role="toolbar" aria-label="Filters">
+      <button type="button" class="fbtn" data-open="where" aria-expanded="false"><span class="k">Where</span><span class="v"></span></button>
+      <button type="button" class="fbtn" data-open="when" aria-expanded="false"><span class="k">When</span><span class="v"></span></button>
+      <button type="button" class="fbtn" data-open="nights" aria-expanded="false"><span class="k">Nights</span><span class="v"></span></button>
+      <button type="button" class="fbtn" data-open="cabin" aria-expanded="false"><span class="k">Cabin</span><span class="v"></span></button>
+      <button type="button" class="fbtn" data-open="price" aria-expanded="false"><span class="k">Price</span><span class="v"></span></button>
+      <button type="button" class="fbtn" data-open="more" aria-expanded="false"><span class="k">More filters</span><span class="v"></span></button>
     </div>
-    <div class="hint" id="windowNote"></div>
-  </section>
-
-  <div class="layout" id="layout">
-    <details class="filters" id="filterPanel">
-      <summary>Filters <span class="right"><span class="count" id="activeCount"></span><span class="tog"></span></span></summary>
-      <div class="fbody">
-        <div class="field"><span class="lab">Part of the world</span><div class="chips" id="fRegion"></div></div>
-        <div class="field"><span class="lab">Cruise line</span><div class="chips" id="fLine"></div></div>
-        <div class="field"><span class="lab">Nights</span>
-          <div class="pair"><input type="number" id="fNmin" min="1" inputmode="numeric" placeholder="Min" aria-label="Minimum nights"><input type="number" id="fNmax" min="1" inputmode="numeric" placeholder="Max" aria-label="Maximum nights"></div></div>
-        <div class="field"><span class="lab">Departs on</span><div class="chips" id="fDow"></div></div>
-        <div class="field"><span class="lab">Departure port</span><div class="chips scroll" id="fPort"></div></div>
-        <div class="field"><label for="fShip">Ship</label><select id="fShip"></select></div>
-        <div class="field"><label for="fVisit">Must visit</label>
-          <input type="text" id="fVisit" placeholder="e.g. Cozumel, St. Thomas" autocomplete="off">
-          <span class="hint">Separate ports with commas. All must be on the itinerary.</span></div>
-        <div class="field"><label for="fCabin">Cabin type</label>
-          <select id="fCabin"><option value="">Cheapest available</option><option value="interior">Interior</option><option value="outside">Ocean view</option><option value="balcony">Balcony</option><option value="suite">Suite</option></select></div>
-        <div class="field"><span class="lab">Max price per person</span>
-          <div class="pair"><input type="number" id="fPrice" min="0" inputmode="numeric" placeholder="Total $" aria-label="Maximum total price per person"><input type="number" id="fPpn" min="0" inputmode="numeric" placeholder="Per night $" aria-label="Maximum price per night"></div></div>
-        <div class="field"><label for="fSea">Max sea days</label><input type="number" id="fSea" min="0" inputmode="numeric" placeholder="Any"></div>
-        <label class="check" for="fPriced"><input type="checkbox" id="fPriced"> Hide sailings with no price</label>
-        <button class="btn quiet" id="reset" type="button">Clear all filters</button>
+    <div class="backdrop" id="backdrop" hidden></div>
+    <div class="sheet" id="sheet" role="dialog" aria-labelledby="sheetTitle" tabindex="-1" hidden>
+      <div class="shead"><span id="sheetTitle"></span><button type="button" class="sclose" id="sheetClose" aria-label="Close">&times;</button></div>
+      <div class="sbody">
+        <div class="pane" data-pane="where" hidden>
+          <div class="opts" id="lRegion"></div>
+        </div>
+        <div class="pane" data-pane="when" hidden>
+          <div class="pair">
+            <div class="field"><label for="fFrom">Leave on or after</label><input type="date" id="fFrom"></div>
+            <div class="field"><label for="fTo">Back by</label><input type="date" id="fTo"></div>
+          </div>
+          <div class="hint" id="windowNote"></div>
+        </div>
+        <div class="pane" data-pane="nights" hidden>
+          <div class="chips" id="nightPresets"></div>
+          <div class="pair">
+            <div class="field"><label for="fNmin">At least</label><input type="number" id="fNmin" min="1" inputmode="numeric" placeholder="Any"></div>
+            <div class="field"><label for="fNmax">At most</label><input type="number" id="fNmax" min="1" inputmode="numeric" placeholder="Any"></div>
+          </div>
+        </div>
+        <div class="pane" data-pane="cabin" hidden>
+          <div class="opts" id="lCabin"></div>
+          <div class="hint">Prices, sorting and the price limits all switch to the cabin type you pick.</div>
+        </div>
+        <div class="pane" data-pane="price" hidden>
+          <div class="pair">
+            <div class="field"><label for="fPrice">Total, up to</label><input type="number" id="fPrice" min="0" inputmode="numeric" placeholder="$ per person"></div>
+            <div class="field"><label for="fPpn">Per night, up to</label><input type="number" id="fPpn" min="0" inputmode="numeric" placeholder="$ per person"></div>
+          </div>
+          <label class="check" for="fPriced"><input type="checkbox" id="fPriced"> Hide sailings with no price</label>
+        </div>
+        <div class="pane" data-pane="more" hidden>
+          <div class="field"><span class="lab">Cruise line</span><div class="opts" id="lLine"></div></div>
+          <div class="field"><span class="lab">Departure port</span>
+            <div class="chips"><button type="button" class="chip" id="flPorts" aria-pressed="false">Florida ports</button></div>
+            <input type="search" id="fPortQ" placeholder="Search ports" aria-label="Search departure ports" autocomplete="off">
+            <div class="opts scroll" id="lPort"></div></div>
+          <div class="field"><label for="fShip">Ship</label><select id="fShip"></select></div>
+          <div class="field"><label for="fVisit">Must visit</label>
+            <input type="text" id="fVisit" placeholder="e.g. Cozumel, St. Thomas" autocomplete="off">
+            <span class="hint">Separate ports with commas. All must be on the itinerary.</span></div>
+          <div class="field"><label for="fSea">Max sea days</label><input type="number" id="fSea" min="0" inputmode="numeric" placeholder="Any">
+            <span class="hint">Norwegian and Princess don't report sea days, so they drop out when this is set.</span></div>
+          <div class="field"><span class="lab">Departs on</span><div class="chips" id="fDow"></div></div>
+        </div>
       </div>
-    </details>
+      <div class="sfoot"><button type="button" class="btn quiet" id="paneClear">Clear</button><button type="button" class="btn solid" id="paneDone">Done</button></div>
+    </div>
+  </div>
+
+  <div class="active" id="active" aria-label="Active filters"></div>
 
     <main>
       <div class="summary">
@@ -218,7 +281,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       </div>
       <div class="results" id="results"></div>
     </main>
-  </div>
 </div>
 
 <script>
@@ -306,16 +368,29 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   }
 
   /* ---------- controls ---------- */
+  var order = { region: [], line: [], port: [] };
+  var CABS = [["", "Cheapest available"], ["interior", "Interior"], ["outside", "Ocean view"], ["balcony", "Balcony"], ["suite", "Suite"]];
+  var NIGHTS = [["2", "5", "2–5 nights"], ["6", "8", "6–8 nights"], ["9", "", "9+ nights"]];
+  var FLORIDA = ["Miami", "Fort Lauderdale", "Port Canaveral", "Tampa", "Jacksonville"];
+  var PANES = {
+    where: { title: "Part of the world", keys: ["regions"] },
+    when: { title: "Travel dates", keys: ["from", "to"] },
+    nights: { title: "Nights", keys: ["nmin", "nmax"] },
+    cabin: { title: "Cabin type", keys: ["cabin"] },
+    price: { title: "Max price per person", keys: ["price", "ppn", "priced"] },
+    more: { title: "More filters", keys: ["lines", "ports", "ship", "visit", "sea", "dow"] }
+  };
+  var openPane = null, opener = null, activeFns = [];
+
   function chipSet(el, values, labels, selected) {
     el.innerHTML = values.map(function (v, i) {
       return '<button type="button" class="chip" data-v="' + esc(v) + '" aria-pressed="' + (selected.indexOf(v) >= 0) + '">' + esc(labels ? labels[i] : v) + "</button>";
     }).join("");
   }
   function buildOptions() {
-    chipSet($("fRegion"), counts("region"), null, F.regions);
-    chipSet($("fLine"), counts("line"), null, F.lines);
-    chipSet($("fPort"), counts("port"), null, F.ports);
+    order = { region: counts("region"), line: counts("line"), port: counts("port") };
     chipSet($("fDow"), [0, 1, 2, 3, 4, 5, 6], DOW, F.dow);
+    $("nightPresets").innerHTML = NIGHTS.map(function (n, i) { return '<button type="button" class="chip" data-i="' + i + '">' + n[2] + "</button>"; }).join("");
     var ships = counts("ship").sort();
     $("fShip").innerHTML = '<option value="">Any ship</option>' + ships.map(function (s) {
       return '<option value="' + esc(s) + '">' + esc(s) + "</option>";
@@ -324,33 +399,143 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   function syncInputs() {
     $("fFrom").value = F.from; $("fTo").value = F.to; $("fNmin").value = F.nmin; $("fNmax").value = F.nmax;
     $("fShip").value = F.ship; $("fVisit").value = F.visit; $("fPrice").value = F.price; $("fPpn").value = F.ppn;
-    $("fSea").value = F.sea; $("fCabin").value = F.cabin; $("fPriced").checked = F.priced; $("sortBy").value = F.sort;
+    $("fSea").value = F.sea; $("fPriced").checked = F.priced; $("sortBy").value = F.sort;
+    chipSet($("fDow"), [0, 1, 2, 3, 4, 5, 6], DOW, F.dow);
   }
   function toggle(list, v) { var i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); }
-  function wireChips(id, key, numeric) {
-    $(id).addEventListener("click", function (e) {
-      var b = e.target.closest(".chip"); if (!b) return;
-      toggle(F[key], numeric ? Number(b.dataset.v) : b.dataset.v);
-      b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
-      changed();
-    });
-  }
   function wireInput(id, key, prop) {
     $(id).addEventListener("input", function () { F[key] = prop ? $(id)[prop] : $(id).value; changed(); });
   }
   function changed() { shown = PAGE; store("cruiseFilter.filters", F); render(); }
+  function isSet(k) { return Array.isArray(F[k]) ? F[k].length > 0 : (F[k] !== "" && F[k] !== false); }
+  function clearKeys(keys) {
+    var b = blank();
+    keys.forEach(function (k) { F[k] = b[k]; });
+    applyCabin(); syncInputs(); changed();
+  }
+
+  /* how many sailings each choice would give, with every other filter applied */
+  function facet(key, prop) {
+    var m = {};
+    data.forEach(function (r) { if (matches(r, key)) m[r[prop]] = (m[r[prop]] || 0) + 1; });
+    return m;
+  }
+  function optList(el, key, prop, query) {
+    var f = facet(key, prop), q = (query || "").trim().toLowerCase();
+    var vals = order[prop].filter(function (v) { return !q || v.toLowerCase().indexOf(q) >= 0; });
+    el.innerHTML = vals.map(function (v) {
+      var c = f[v] || 0, on = F[key].indexOf(v) >= 0;
+      return '<label class="opt' + (c || on ? "" : " zero") + '"><input type="checkbox" data-k="' + key + '" data-v="' + esc(v) + '"' + (on ? " checked" : "") +
+        "><span>" + esc(v) + '</span><span class="ct">' + c.toLocaleString("en-US") + "</span></label>";
+    }).join("") || '<div class="hint" style="padding:8px 2px">Nothing matches that search.</div>';
+  }
+  function renderPane() {
+    if (!openPane) return;
+    var a = document.activeElement, fk = a && a.dataset ? a.dataset.k : null, fv = a && a.dataset ? a.dataset.v : null;
+    if (openPane === "where") optList($("lRegion"), "regions", "region");
+    if (openPane === "more") {
+      optList($("lLine"), "lines", "line");
+      optList($("lPort"), "ports", "port", $("fPortQ").value);
+      var fl = FLORIDA.filter(function (p) { return order.port.indexOf(p) >= 0; });
+      $("flPorts").setAttribute("aria-pressed", String(fl.length > 0 && fl.every(function (p) { return F.ports.indexOf(p) >= 0; })));
+    }
+    if (openPane === "cabin") {
+      $("lCabin").innerHTML = CABS.map(function (c) {
+        return '<label class="opt"><input type="radio" name="cabin" data-k="cabin" data-v="' + c[0] + '"' + (F.cabin === c[0] ? " checked" : "") + "><span>" + c[1] + "</span></label>";
+      }).join("");
+    }
+    if (openPane === "nights") {
+      Array.prototype.forEach.call($("nightPresets").children, function (b, i) {
+        b.setAttribute("aria-pressed", String(String(F.nmin) === NIGHTS[i][0] && String(F.nmax) === NIGHTS[i][1]));
+      });
+    }
+    if (fk) {
+      var again = Array.prototype.filter.call($("sheet").querySelectorAll("input[data-k]"), function (i) { return i.dataset.k === fk && i.dataset.v === fv; })[0];
+      if (again) again.focus();
+    }
+  }
+
+  function openSheet(name, btn) {
+    if (openPane === name) { closeSheet(); return; }
+    openPane = name; opener = btn;
+    Array.prototype.forEach.call(document.querySelectorAll(".pane"), function (p) { p.hidden = p.dataset.pane !== name; });
+    Array.prototype.forEach.call(document.querySelectorAll(".fbtn"), function (b) { b.setAttribute("aria-expanded", String(b === btn)); });
+    $("sheetTitle").textContent = PANES[name].title;
+    var sheet = $("sheet"), w = name === "more" ? 460 : 360;
+    sheet.classList.toggle("wide", name === "more");
+    sheet.style.left = Math.max(0, Math.min(btn.offsetLeft - $("bar").scrollLeft, $("barwrap").clientWidth - w)) + "px";
+    sheet.hidden = false; $("backdrop").hidden = false;
+    $("fPortQ").value = "";
+    renderPane();
+    sheet.querySelector(".sbody").scrollTop = 0;
+    sheet.focus();
+  }
+  function closeSheet(refocus) {
+    if (!openPane) return;
+    openPane = null;
+    $("sheet").hidden = true; $("backdrop").hidden = true;
+    Array.prototype.forEach.call(document.querySelectorAll(".fbtn"), function (b) { b.setAttribute("aria-expanded", "false"); });
+    if (refocus && opener) opener.focus();
+  }
+
+  /* ---------- labels for the bar and the active-filter tags ---------- */
+  function shortDay(iso) {
+    var d = parseDay(iso); if (!d) return "";
+    return MON[d.getMonth()] + " " + d.getDate() + (d.getFullYear() !== new Date().getFullYear() ? ", " + d.getFullYear() : "");
+  }
+  function nightsLabel() {
+    var a = F.nmin, b = F.nmax;
+    if (a !== "" && b !== "") return String(a) === String(b) ? a + " nights" : a + "–" + b + " nights";
+    if (a !== "") return a + "+ nights";
+    if (b !== "") return "Up to " + b + " nights";
+    return "";
+  }
+  function cabinLabel() { return CABS.filter(function (c) { return c[0] === F.cabin; })[0][1]; }
+  function updateBar() {
+    var v = {
+      where: F.regions.length ? F.regions[0] + (F.regions.length > 1 ? " +" + (F.regions.length - 1) : "") : "Anywhere",
+      when: F.from && F.to ? shortDay(F.from) + " – " + shortDay(F.to) : F.from ? "From " + shortDay(F.from) : F.to ? "Back by " + shortDay(F.to) : "Any dates",
+      nights: nightsLabel() || "Any length",
+      cabin: F.cabin ? cabinLabel() : "Cheapest",
+      price: [F.price !== "" ? "$" + Number(F.price).toLocaleString("en-US") : "", F.ppn !== "" ? "$" + F.ppn + "/night" : ""].filter(Boolean).join(", ") || (F.priced ? "Priced only" : "Any price"),
+      more: (function () { var n = PANES.more.keys.filter(isSet).length; return n ? n + " active" : "Line, port, ship"; })()
+    };
+    Array.prototype.forEach.call(document.querySelectorAll(".fbtn"), function (b) {
+      var name = b.dataset.open;
+      b.querySelector(".v").textContent = (name === "price" && (F.price !== "" || F.ppn !== "") ? "Up to " : "") + v[name];
+      b.classList.toggle("on", PANES[name].keys.some(isSet));
+    });
+  }
+  function renderActive() {
+    var tags = [];
+    function drop(key, v) { return function () { toggle(F[key], v); }; }
+    function wipe(keys) { return function () { var b = blank(); keys.forEach(function (k) { F[k] = b[k]; }); }; }
+    F.regions.forEach(function (v) { tags.push([v, drop("regions", v)]); });
+    if (F.from) tags.push(["From " + shortDay(F.from), wipe(["from"])]);
+    if (F.to) tags.push(["Back by " + shortDay(F.to), wipe(["to"])]);
+    if (nightsLabel()) tags.push([nightsLabel(), wipe(["nmin", "nmax"])]);
+    if (F.cabin) tags.push([cabinLabel(), wipe(["cabin"])]);
+    if (F.price !== "") tags.push(["Up to $" + Number(F.price).toLocaleString("en-US"), wipe(["price"])]);
+    if (F.ppn !== "") tags.push(["Up to $" + F.ppn + "/night", wipe(["ppn"])]);
+    if (F.priced) tags.push(["Priced only", wipe(["priced"])]);
+    F.lines.forEach(function (v) { tags.push([v, drop("lines", v)]); });
+    if (F.ports.length > 3) tags.push([F.ports.length + " departure ports", wipe(["ports"])]);
+    else F.ports.forEach(function (v) { tags.push(["From " + v, drop("ports", v)]); });
+    if (F.ship) tags.push([F.ship, wipe(["ship"])]);
+    if (F.visit.trim()) tags.push(["Visits " + F.visit.trim(), wipe(["visit"])]);
+    if (F.sea !== "") tags.push(["Max " + F.sea + " sea day" + (String(F.sea) === "1" ? "" : "s"), wipe(["sea"])]);
+    if (F.dow.length) tags.push(["Departs " + F.dow.slice().sort().map(function (d) { return DOW[d]; }).join(", "), wipe(["dow"])]);
+    activeFns = tags.map(function (t) { return t[1]; });
+    $("active").innerHTML = tags.map(function (t, i) {
+      return '<button type="button" class="tag" data-i="' + i + '" aria-label="Remove filter: ' + esc(t[0]) + '">' + esc(t[0]) + '<span aria-hidden="true">&times;</span></button>';
+    }).join("") + (tags.length ? '<button type="button" class="clearall" id="clearAll">Clear all</button>' : "");
+  }
 
   /* ---------- filtering ---------- */
-  function activeCount() {
-    var n = 0;
-    ["regions", "lines", "dow", "ports"].forEach(function (k) { if (F[k].length) n++; });
-    ["from", "to", "nmin", "nmax", "ship", "visit", "price", "ppn", "sea", "cabin"].forEach(function (k) { if (F[k] !== "") n++; });
-    return n + (F.priced ? 1 : 0);
-  }
-  function matches(r) {
-    if (F.regions.length && F.regions.indexOf(r.region) < 0) return false;
-    if (F.lines.length && F.lines.indexOf(r.line) < 0) return false;
-    if (F.ports.length && F.ports.indexOf(r.port) < 0) return false;
+  function matches(r, skip) {
+    if (skip !== "regions" && F.regions.length && F.regions.indexOf(r.region) < 0) return false;
+    if (skip !== "lines" && F.lines.length && F.lines.indexOf(r.line) < 0) return false;
+    if (skip !== "ports" && F.ports.length && F.ports.indexOf(r.port) < 0) return false;
     if (F.dow.length && F.dow.indexOf(r.dow) < 0) return false;
     if (F.ship && r.ship !== F.ship) return false;
     if (F.from && r.start < F.from) return false;
@@ -385,7 +570,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     return out;
   }
   function render() {
-    var list = data.filter(matches).sort(sorter);
+    var list = data.filter(function (r) { return matches(r); }).sort(sorter);
     var priced = list.filter(function (r) { return r.price != null; });
     var lowP = priced.reduce(function (m, r) { return Math.min(m, r.price); }, Infinity);
     var lowN = priced.reduce(function (m, r) { return r.ppn != null ? Math.min(m, r.ppn) : m; }, Infinity);
@@ -401,24 +586,22 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       note = span < 0 ? "The return date is before the leave date." : "A " + span + "-night window. Only cruises that leave and return inside it are shown.";
     }
     $("windowNote").textContent = note;
-    var n = activeCount();
-    $("activeCount").textContent = n ? n + " active" : "";
-    groupBadges();
+    updateBar(); renderActive(); renderPane();
+    $("paneDone").textContent = status === "ready" ? "Show " + list.length.toLocaleString("en-US") + " sailing" + (list.length === 1 ? "" : "s") : "Done";
     $("stats").innerHTML =
       '<div class="stat"><b>' + list.length.toLocaleString("en-US") + "</b><span>of " + data.length.toLocaleString("en-US") + " sailings match</span></div>" +
       (priced.length ? '<div class="stat"><b>' + money(lowP) + "</b><span>lowest fare</span></div>" +
         '<div class="stat"><b>' + money(lowN) + "</b><span>lowest per night</span></div>" : "");
 
     if (!list.length) {
-      $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Loosen one or clear them all.</div>' : "";
+      $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Remove one of the tags above to widen the search.</div>' : "";
       return;
     }
     var html = list.slice(0, shown).map(function (r) {
       var best = r.ppn != null && r.ppn === lowN;
       var fare = r.price != null
         ? '<div class="pp">' + money(r.price) + '</div><span class="unit">' + (F.cabin ? "per person, " + CABIN[F.cabin] : "per person from") + "</span>" +
-          (r.ppn != null ? '<span class="pill' + (best ? " best" : "") + '">' + money(r.ppn) + " / night</span>" : "") +
-""
+          (r.ppn != null ? '<span class="pill' + (best ? " best" : "") + '">' + money(r.ppn) + " / night</span>" : "")
         : '<span class="unit">' + (F.cabin ? "No " + CABIN[F.cabin] + " price" : "No price listed") + "</span>";
       var sea = r.sea == null ? "" : " · <strong>" + r.sea + "</strong> sea day" + (r.sea === 1 ? "" : "s");
       var open = r.url ? '<a class="row link" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc("Open " + r.ship + ", " + r.start + ", on the " + r.line + " site") + '">' : '<article class="row">';
@@ -461,40 +644,45 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   if (mq.addEventListener) mq.addEventListener("change", applyPalette);
   new MutationObserver(applyPalette).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
-  /* ---------- collapsible filter groups ---------- */
-  var GROUP_KEYS = { "Part of the world": ["regions"], "Cruise line": ["lines"], "Nights": ["nmin", "nmax"], "Departs on": ["dow"], "Departure port": ["ports"],
-    "Ship": ["ship"], "Must visit": ["visit"], "Cabin type": ["cabin"], "Max price per person": ["price", "ppn"], "Max sea days": ["sea"] };
-  var closedGroups = recall("cruiseFilter.closedGroups"); if (!Array.isArray(closedGroups)) closedGroups = ["Departure port", "Ship"];
-  var groups = [];
-  Array.prototype.forEach.call(document.querySelectorAll(".fbody > .field"), function (f) {
-    var lab = f.querySelector(".lab") || f.querySelector("label"); if (!lab) return;
-    var name = lab.textContent.trim(), d = document.createElement("details"), s = document.createElement("summary");
-    var a = document.createElement("span"), b = document.createElement("span");
-    a.className = "lab"; a.textContent = name; b.className = "sel"; s.appendChild(a); s.appendChild(b);
-    var ctl = f.querySelector("input, select"); if (lab.tagName === "LABEL" && ctl) ctl.setAttribute("aria-label", name);
-    lab.remove(); d.className = "grp"; d.appendChild(s); f.parentNode.insertBefore(d, f); d.appendChild(f);
-    d.open = closedGroups.indexOf(name) < 0;
-    d.addEventListener("toggle", function () {
-      closedGroups = groups.filter(function (g) { return !g.el.open; }).map(function (g) { return g.name; });
-      store("cruiseFilter.closedGroups", closedGroups);
-    });
-    groups.push({ name: name, el: d, sel: b });
-  });
-  function groupBadges() {
-    groups.forEach(function (g) {
-      var n = 0, set = false;
-      (GROUP_KEYS[g.name] || []).forEach(function (k) { if (Array.isArray(F[k])) n += F[k].length; else if (F[k] !== "") set = true; });
-      g.sel.textContent = n ? n + " selected" : (set ? "set" : "");
-    });
-  }
-
   /* ---------- wire up ---------- */
-  wireChips("fRegion", "regions"); wireChips("fLine", "lines"); wireChips("fPort", "ports"); wireChips("fDow", "dow", true);
   [["fFrom", "from"], ["fTo", "to"], ["fNmin", "nmin"], ["fNmax", "nmax"], ["fShip", "ship"], ["fVisit", "visit"],
    ["fPrice", "price"], ["fPpn", "ppn"], ["fSea", "sea"], ["sortBy", "sort"]].forEach(function (p) { wireInput(p[0], p[1]); });
   wireInput("fPriced", "priced", "checked");
-  $("fCabin").addEventListener("change", function () { F.cabin = $("fCabin").value; applyCabin(); changed(); });
-  $("reset").addEventListener("click", function () { var s = F.sort; F = blank(); F.sort = s; applyCabin(); buildOptions(); syncInputs(); changed(); });
+  $("bar").addEventListener("click", function (e) { var b = e.target.closest(".fbtn"); if (b) openSheet(b.dataset.open, b); });
+  $("sheet").addEventListener("change", function (e) {
+    var t = e.target; if (!t.dataset || !t.dataset.k) return;
+    if (t.dataset.k === "cabin") { F.cabin = t.dataset.v; applyCabin(); } else toggle(F[t.dataset.k], t.dataset.v);
+    changed();
+  });
+  $("fDow").addEventListener("click", function (e) {
+    var b = e.target.closest(".chip"); if (!b) return;
+    toggle(F.dow, Number(b.dataset.v)); b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true")); changed();
+  });
+  $("nightPresets").addEventListener("click", function (e) {
+    var b = e.target.closest(".chip"); if (!b) return;
+    var n = NIGHTS[+b.dataset.i], on = b.getAttribute("aria-pressed") === "true";
+    F.nmin = on ? "" : n[0]; F.nmax = on ? "" : n[1]; syncInputs(); changed();
+  });
+  $("flPorts").addEventListener("click", function () {
+    var fl = FLORIDA.filter(function (p) { return order.port.indexOf(p) >= 0; }), on = $("flPorts").getAttribute("aria-pressed") === "true";
+    F.ports = F.ports.filter(function (p) { return fl.indexOf(p) < 0; });
+    if (!on) F.ports = F.ports.concat(fl);
+    changed();
+  });
+  $("fPortQ").addEventListener("input", renderPane);
+  $("paneClear").addEventListener("click", function () { if (openPane) clearKeys(PANES[openPane].keys); });
+  $("paneDone").addEventListener("click", function () { closeSheet(true); });
+  $("sheetClose").addEventListener("click", function () { closeSheet(true); });
+  $("backdrop").addEventListener("click", function () { closeSheet(); });
+  document.addEventListener("mousedown", function (e) {
+    if (openPane && !$("sheet").contains(e.target) && !e.target.closest(".fbtn")) closeSheet();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && openPane) closeSheet(true); });
+  $("active").addEventListener("click", function (e) {
+    if (e.target.id === "clearAll") { var s = F.sort; F = blank(); F.sort = s; applyCabin(); syncInputs(); changed(); return; }
+    var t = e.target.closest(".tag"); if (!t) return;
+    activeFns[+t.dataset.i](); applyCabin(); syncInputs(); changed();
+  });
   $("results").addEventListener("click", function (e) { if (e.target.id === "more") { shown += PAGE; render(); } });
 
   var savedF = recall("cruiseFilter.filters");
@@ -504,13 +692,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       if (savedF[k] != null && Array.isArray(savedF[k]) === Array.isArray(b[k]) && typeof savedF[k] === typeof b[k]) F[k] = savedF[k];
     });
   }
-  var wide = window.matchMedia("(min-width: 880px)").matches, panelPref = recall("cruiseFilter.panelOpen");
-  $("filterPanel").open = typeof panelPref === "boolean" ? panelPref : wide;
-  $("layout").classList.toggle("collapsed", !$("filterPanel").open);
-  $("filterPanel").addEventListener("toggle", function () {
-    store("cruiseFilter.panelOpen", $("filterPanel").open);
-    $("layout").classList.toggle("collapsed", !$("filterPanel").open);
-  });
   try { localStorage.removeItem("cruiseFilter.data"); } catch (e) {}  // leftover from the old file loader
   buildOptions(); syncInputs(); render();
   fetch("sailings.json", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) {
