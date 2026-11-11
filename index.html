@@ -157,11 +157,12 @@ input[type="number"], input[type="date"], input[type="text"], input[type="search
 
 .summary {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-  gap: 10px 18px; padding-bottom: 10px; border-bottom: 2px solid var(--ink);
+  gap: 8px 18px; padding-bottom: 8px; border-bottom: 2px solid var(--ink);
 }
-.stats { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
-.stat b { font: 800 30px/1 var(--display); letter-spacing: 0.02em; margin-right: 5px; }
-.stat span { font-size: 13px; color: var(--muted); }
+.stats { font-size: 13.5px; color: var(--muted); }
+.stats b { font: 800 26px/1 var(--display); letter-spacing: 0.02em; margin-right: 3px; color: var(--ink); }
+.notice[hidden] { display: none; }
+.foot { font-size: 12px; color: var(--muted); margin-top: 18px; max-width: 70ch; }
 .sort { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
 .sort select { width: auto; background: var(--panel); }
 
@@ -280,6 +281,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
           </select></div>
       </div>
       <div class="results" id="results"></div>
+      <p class="foot" id="foot"></p>
     </main>
 </div>
 
@@ -572,13 +574,13 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
   function render() {
     var list = data.filter(function (r) { return matches(r); }).sort(sorter);
     var priced = list.filter(function (r) { return r.price != null; });
-    var lowP = priced.reduce(function (m, r) { return Math.min(m, r.price); }, Infinity);
     var lowN = priced.reduce(function (m, r) { return r.ppn != null ? Math.min(m, r.ppn) : m; }, Infinity);
 
-    $("notice").className = "notice" + (status === "ready" ? " real" : "");
-    $("notice").innerHTML = status === "loading" ? "Loading sailings\u2026"
-      : status === "error" ? "<b>Couldn't load the sailings data.</b> Check your connection and reload the page."
-      : "<b>" + data.length.toLocaleString("en-US") + " sailings loaded</b>" + (scrapedAt ? ", pulled " + esc(scrapedAt.replace("T", " at ")) : "") + ". Prices are per person for two sharing a cabin, including taxes, fees and port expenses, as of that pull. Daily gratuities are extra on every line." + staleNote();
+    $("notice").hidden = status === "ready";
+    $("notice").innerHTML = status === "loading" ? "Loading sailings\u2026" : "<b>Couldn't load the sailings data.</b> Check your connection and reload the page.";
+    var upd = parseDay(scrapedAt), hm = /T(\d{2}):(\d{2})/.exec(scrapedAt || "");
+    $("foot").innerHTML = status !== "ready" ? "" : "Prices are per person for two sharing a cabin and include taxes, fees and port expenses. Gratuities are extra." +
+      (upd ? " Updated " + MON[upd.getMonth()] + " " + upd.getDate() + (hm ? " at " + ((+hm[1] % 12) || 12) + ":" + hm[2] + (+hm[1] < 12 ? " AM" : " PM") + " ET" : "") + "." : "") + staleNote();
 
     var wf = parseDay(F.from), wt = parseDay(F.to), note = "Shows only cruises that leave and return inside these dates.";
     if (wf && wt) {
@@ -588,10 +590,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     $("windowNote").textContent = note;
     updateBar(); renderActive(); renderPane();
     $("paneDone").textContent = status === "ready" ? "Show " + list.length.toLocaleString("en-US") + " sailing" + (list.length === 1 ? "" : "s") : "Done";
-    $("stats").innerHTML =
-      '<div class="stat"><b>' + list.length.toLocaleString("en-US") + "</b><span>of " + data.length.toLocaleString("en-US") + " sailings match</span></div>" +
-      (priced.length ? '<div class="stat"><b>' + money(lowP) + "</b><span>lowest fare</span></div>" +
-        '<div class="stat"><b>' + money(lowN) + "</b><span>lowest per night</span></div>" : "");
+    $("stats").innerHTML = status !== "ready" ? "" : "<b>" + list.length.toLocaleString("en-US") + "</b> of " + data.length.toLocaleString("en-US") + " sailings";
 
     if (!list.length) {
       $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Remove one of the tags above to widen the search.</div>' : "";
