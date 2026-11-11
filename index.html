@@ -53,7 +53,7 @@ button, input, select { font: inherit; color: inherit; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; display: grid; gap: 16px; }
 header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; }
 h1 {
-  font: 800 clamp(34px, 9vw, 54px)/0.92 var(--display);
+  font: 800 clamp(30px, 8vw, 48px)/0.92 var(--display);
   letter-spacing: 0.02em; text-transform: uppercase; margin: 0;
 }
 h1 span { color: var(--buoy); }
@@ -79,16 +79,18 @@ h1 span { color: var(--buoy); }
 .barwrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 8px 0; margin: -8px 0; }
 .bar { display: flex; gap: 8px; flex-wrap: wrap; }
 .fbtn {
-  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; flex: none;
-  border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
-  padding: 7px 30px 7px 12px; cursor: pointer; position: relative; text-align: left; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; flex: none; height: 38px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px;
+  padding: 0 12px 0 15px; cursor: pointer; white-space: nowrap; font-size: 14px; font-weight: 600;
+  transition: background .12s, border-color .12s, color .12s;
 }
-.fbtn::after { content: "\25BE"; position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
-.fbtn .k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
-.fbtn .v { font-size: 14px; font-weight: 600; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-.fbtn.on { border-color: var(--buoy); background: var(--buoy-soft); }
-.fbtn.on .k { color: var(--buoy); }
-.fbtn[aria-expanded="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.fbtn::after { content: ""; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: translateY(-2px) rotate(45deg); opacity: .55; }
+.fbtn:hover { border-color: var(--muted); }
+.fbtn .k { display: none; }
+.fbtn .v { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.fbtn.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.fbtn.on::after { opacity: .8; }
+.fbtn[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--buoy); }
 
 .backdrop { display: none; }
 .sheet {
@@ -110,8 +112,8 @@ h1 span { color: var(--buoy); }
 .pane[hidden] { display: none; }
 .sfoot { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
 @media (max-width: 699px) {
-  .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
-  .bar::-webkit-scrollbar { display: none; }
+  .bar { gap: 6px; }
+  .fbtn { height: 36px; padding: 0 11px 0 13px; font-size: 13.5px; }
   .backdrop:not([hidden]) { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 30; }
   .sheet, .sheet.wide {
     position: fixed; left: 0 !important; right: 0; bottom: 0; top: auto; width: auto; max-width: none;
@@ -146,14 +148,10 @@ input[type="number"], input[type="date"], input[type="text"], input[type="search
 .check input { width: 17px; height: 17px; accent-color: var(--buoy); margin: 0; }
 .hint { font-size: 12px; color: var(--muted); }
 
-.active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.active:empty { display: none; }
-.tag {
-  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--buoy); background: var(--buoy-soft);
-  color: var(--ink); border-radius: 999px; padding: 4px 8px 4px 11px; font-size: 13px; font-weight: 600; cursor: pointer;
-}
-.tag span { color: var(--buoy); font-size: 16px; line-height: 1; }
-.clearall { border: 0; background: none; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 4px 6px; }
+.clearall { border: 0; background: none; color: var(--buoy); cursor: pointer; font-size: 13.5px; font-weight: 600; padding: 2px 4px; margin-left: 6px; }
+.clearall:hover { text-decoration: underline; }
+.footbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 20px; margin-top: 18px; }
+.footbar .foot { margin: 0; }
 
 .summary {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -199,10 +197,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
 <div class="wrap">
   <header class="top">
     <h1>Cruise <span>Filter</span></h1>
-    <div class="load">
-      <div class="theme"><label for="palette">Colors</label>
-        <select id="palette"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
-    </div>
   </header>
 
   <div class="notice" id="notice"></div>
@@ -269,7 +263,6 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     </div>
   </div>
 
-  <div class="active" id="active" aria-label="Active filters"></div>
 
     <main>
       <div class="summary">
@@ -283,7 +276,11 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
           </select></div>
       </div>
       <div class="results" id="results"></div>
-      <p class="foot" id="foot"></p>
+      <div class="footbar">
+        <p class="foot" id="foot"></p>
+        <div class="theme"><label for="palette">Colors</label>
+          <select id="palette"><option value="clean">Clean</option><option value="midnight">Midnight</option><option value="tropic">Tropic</option><option value="harbor">Harbor</option></select></div>
+      </div>
     </main>
 </div>
 
@@ -384,7 +381,7 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     price: { title: "Max price per person", keys: ["price", "ppn", "priced"] },
     more: { title: "More filters", keys: ["lines", "ports", "ships", "visit", "sea", "dow"] }
   };
-  var openPane = null, opener = null, activeFns = [];
+  var openPane = null, opener = null;
 
   function chipSet(el, values, labels, selected) {
     el.innerHTML = values.map(function (v, i) {
@@ -492,45 +489,26 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     return "";
   }
   function cabinLabel() { return CABS.filter(function (c) { return c[0] === F.cabin; })[0][1]; }
+  function md(iso) { var d = parseDay(iso); return d ? MON[d.getMonth()] + " " + d.getDate() : ""; }
   function updateBar() {
+    var nMore = PANES.more.keys.filter(isSet).length;
     var v = {
-      where: F.regions.length ? F.regions[0] + (F.regions.length > 1 ? " +" + (F.regions.length - 1) : "") : "Anywhere",
-      when: F.from && F.to ? shortDay(F.from) + " – " + shortDay(F.to) : F.from ? "From " + shortDay(F.from) : F.to ? "Back by " + shortDay(F.to) : "Any dates",
-      nights: nightsLabel() || "Any length",
-      cabin: F.cabin ? cabinLabel() : "Cheapest",
-      price: [F.price !== "" ? "$" + Number(F.price).toLocaleString("en-US") : "", F.ppn !== "" ? "$" + F.ppn + "/night" : ""].filter(Boolean).join(", ") || (F.priced ? "Priced only" : "Any price"),
-      more: (function () { var n = PANES.more.keys.filter(isSet).length; return n ? n + " active" : "Line, port, ship"; })()
+      where: F.regions.length ? F.regions[0] + (F.regions.length > 1 ? " +" + (F.regions.length - 1) : "") : "Where",
+      when: F.from && F.to ? md(F.from) + " \u2013 " + md(F.to) : F.from ? "From " + md(F.from) : F.to ? "By " + md(F.to) : "Dates",
+      nights: nightsLabel() || "Nights",
+      cabin: F.cabin ? cabinLabel() : "Cabin",
+      price: F.price !== "" ? "Under $" + Number(F.price).toLocaleString("en-US") : F.ppn !== "" ? "Under $" + F.ppn + "/night" : F.priced ? "Priced only" : "Price",
+      more: nMore ? "Filters \u00b7 " + nMore : "More filters"
     };
     Array.prototype.forEach.call(document.querySelectorAll(".fbtn"), function (b) {
-      var name = b.dataset.open;
-      b.querySelector(".v").textContent = (name === "price" && (F.price !== "" || F.ppn !== "") ? "Up to " : "") + v[name];
-      b.classList.toggle("on", PANES[name].keys.some(isSet));
+      var name = b.dataset.open, on = PANES[name].keys.some(isSet);
+      b.querySelector(".v").textContent = v[name];
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-label", b.querySelector(".k").textContent + ": " + (on ? v[name] : "any"));
     });
   }
-  function renderActive() {
-    var tags = [];
-    function drop(key, v) { return function () { toggle(F[key], v); }; }
-    function wipe(keys) { return function () { var b = blank(); keys.forEach(function (k) { F[k] = b[k]; }); }; }
-    F.regions.forEach(function (v) { tags.push([v, drop("regions", v)]); });
-    if (F.from) tags.push(["From " + shortDay(F.from), wipe(["from"])]);
-    if (F.to) tags.push(["Back by " + shortDay(F.to), wipe(["to"])]);
-    if (nightsLabel()) tags.push([nightsLabel(), wipe(["nmin", "nmax"])]);
-    if (F.cabin) tags.push([cabinLabel(), wipe(["cabin"])]);
-    if (F.price !== "") tags.push(["Up to $" + Number(F.price).toLocaleString("en-US"), wipe(["price"])]);
-    if (F.ppn !== "") tags.push(["Up to $" + F.ppn + "/night", wipe(["ppn"])]);
-    if (F.priced) tags.push(["Priced only", wipe(["priced"])]);
-    F.lines.forEach(function (v) { tags.push([v, drop("lines", v)]); });
-    if (F.ports.length > 3) tags.push([F.ports.length + " departure ports", wipe(["ports"])]);
-    else F.ports.forEach(function (v) { tags.push(["From " + v, drop("ports", v)]); });
-    if (F.ships.length > 3) tags.push([F.ships.length + " ships", wipe(["ships"])]);
-    else F.ships.forEach(function (v) { tags.push([v, drop("ships", v)]); });
-    if (F.visit.trim()) tags.push(["Visits " + F.visit.trim(), wipe(["visit"])]);
-    if (F.sea !== "") tags.push(["Max " + F.sea + " sea day" + (String(F.sea) === "1" ? "" : "s"), wipe(["sea"])]);
-    if (F.dow.length) tags.push(["Departs " + F.dow.slice().sort().map(function (d) { return DOW[d]; }).join(", "), wipe(["dow"])]);
-    activeFns = tags.map(function (t) { return t[1]; });
-    $("active").innerHTML = tags.map(function (t, i) {
-      return '<button type="button" class="tag" data-i="' + i + '" aria-label="Remove filter: ' + esc(t[0]) + '">' + esc(t[0]) + '<span aria-hidden="true">&times;</span></button>';
-    }).join("") + (tags.length ? '<button type="button" class="clearall" id="clearAll">Clear all</button>' : "");
+  function activeTotal() {
+    return Object.keys(PANES).reduce(function (n, k) { return n + PANES[k].keys.filter(isSet).length; }, 0);
   }
 
   /* ---------- filtering ---------- */
@@ -600,12 +578,13 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
       note = span < 0 ? "The return date is before the leave date." : "A " + span + "-night window. Only cruises that leave and return inside it are shown.";
     }
     $("windowNote").textContent = note;
-    updateBar(); renderActive(); renderPane();
+    updateBar(); renderPane();
     $("paneDone").textContent = status === "ready" ? "Show " + list.length.toLocaleString("en-US") + " sailing" + (list.length === 1 ? "" : "s") : "Done";
-    $("stats").innerHTML = status !== "ready" ? "" : "<b>" + list.length.toLocaleString("en-US") + "</b> of " + data.length.toLocaleString("en-US") + " sailings";
+    $("stats").innerHTML = status !== "ready" ? "" : "<b>" + list.length.toLocaleString("en-US") + "</b> of " + data.length.toLocaleString("en-US") + " sailings" +
+      (activeTotal() ? '<button type="button" class="clearall" id="clearAll">Clear filters</button>' : "");
 
     if (!list.length) {
-      $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Remove one of the tags above to widen the search.</div>' : "";
+      $("results").innerHTML = status === "ready" ? '<div class="empty">No sailings match these filters. Loosen a filter above to widen the search.</div>' : "";
       return;
     }
     var html = list.slice(0, shown).map(function (r) {
@@ -690,10 +669,8 @@ a.row.link:hover { border-color: var(--buoy); box-shadow: 0 2px 10px rgba(0,0,0,
     if (openPane && !$("sheet").contains(e.target) && !e.target.closest(".fbtn")) closeSheet();
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && openPane) closeSheet(true); });
-  $("active").addEventListener("click", function (e) {
-    if (e.target.id === "clearAll") { var s = F.sort; F = blank(); F.sort = s; applyCabin(); syncInputs(); changed(); return; }
-    var t = e.target.closest(".tag"); if (!t) return;
-    activeFns[+t.dataset.i](); applyCabin(); syncInputs(); changed();
+  $("stats").addEventListener("click", function (e) {
+    if (e.target.id === "clearAll") { var s = F.sort; F = blank(); F.sort = s; applyCabin(); syncInputs(); changed(); }
   });
   $("results").addEventListener("click", function (e) { if (e.target.id === "more") { shown += PAGE; render(); } });
 
